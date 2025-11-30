@@ -30,7 +30,11 @@ const ScrollBar = React.forwardRef<
     )}
     {...props}
   >
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
+    <ScrollAreaPrimitive.ScrollAreaThumb 
+      // Updated styling: Using a darker, semi-transparent gray for the thumb
+      // This works well on dark backgrounds (like your modal) without being jarring on light ones
+      className="relative flex-1 rounded-full bg-slate-500/50 hover:bg-slate-500/80 transition-colors" 
+    />
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
 ));
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName;

@@ -24,8 +24,9 @@ const DeviceCard = ({ device, onClick }: DeviceCardProps) => {
     <Card
       onClick={onClick}
       className={cn(
-        "cursor-pointer transition-all duration-300 hover:scale-105",
-        "border-2 p-6 min-h-[200px] flex flex-col justify-between",
+        "cursor-pointer transition-all duration-300", // Removed hover:scale-105
+        // Increased padding (p-6) and min-height (min-h-[160px])
+        "border-2 p-6 min-h-[160px] flex flex-col justify-between", 
         isOccupied
           ? "bg-occupied/10 border-occupied/50"
           : isPS5
@@ -34,15 +35,15 @@ const DeviceCard = ({ device, onClick }: DeviceCardProps) => {
       )}
     >
       <div className="flex justify-between items-start">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4"> {/* Increased gap */}
           {isPS5 ? (
-            <Gamepad2 className="h-8 w-8 text-ps5" />
+            <Gamepad2 className="h-8 w-8 text-ps5" /> // Increased icon size
           ) : (
-            <Circle className="h-8 w-8 text-billiard" />
+            <Circle className="h-8 w-8 text-billiard" /> // Increased icon size
           )}
           <div>
-            <h3 className="text-xl font-orbitron">{device.name}</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="text-xl font-orbitron leading-none">{device.name}</h3> {/* Increased font size */}
+            <p className="text-sm text-muted-foreground mt-1"> {/* Increased font size */}
               {device.type === "PS5" ? "PlayStation 5" : "Billiard Table"}
             </p>
           </div>
@@ -50,16 +51,16 @@ const DeviceCard = ({ device, onClick }: DeviceCardProps) => {
         <Badge
           variant={isOccupied ? "destructive" : "secondary"}
           className={cn(
-            "font-orbitron",
+            "font-orbitron text-xs px-2.5 py-1", // Increased badge size
             isOccupied && "animate-pulse-slow"
           )}
         >
-          {isOccupied ? "BUSY" : "TAP TO START"}
+          {isOccupied ? "BUSY" : "START"}
         </Badge>
       </div>
 
       {isOccupied && device.current_session_id && (
-        <div className="mt-4 text-sm text-muted-foreground">
+        <div className="mt-3 text-sm text-muted-foreground font-medium"> {/* Increased margin and font size */}
           <p>Session in progress</p>
         </div>
       )}

@@ -9,16 +9,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Wallet, Smartphone, Split } from "lucide-react";
 import AddItemPopup from "./AddItemPopup";
+import { cn } from "@/lib/utils";
 
 interface Device {
   id: string;
@@ -60,9 +54,9 @@ const SessionManagerModal = ({
   const [calculatedAmount, setCalculatedAmount] = useState(0);
   const [sessionItems, setSessionItems] = useState<SessionItem[]>([]);
   const [itemsTotal, setItemsTotal] = useState(0);
-  const [finalAmount, setFinalAmount] = useState(0);
+  const [finalAmount, setFinalAmount] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "UPI" | "SPLIT">("CASH");
-  const [cashAmount, setCashAmount] = useState(0);
+  const [cashAmount, setCashAmount] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
 
@@ -108,7 +102,6 @@ const SessionManagerModal = ({
   };
 
   const calculateBill = async () => {
-    // Fetch rate profile
     const { data: rateProfile, error } = await supabase
       .from("rate_profiles")
       .select("*")
@@ -130,17 +123,19 @@ const SessionManagerModal = ({
     }
 
     setCalculatedAmount(timeCharge);
-    setFinalAmount(timeCharge + itemsTotal);
+    setFinalAmount((timeCharge + itemsTotal).toString());
   };
 
   const handleCheckout = async () => {
     setLoading(true);
 
     try {
-      const amountCash = paymentMethod === "CASH" ? finalAmount : paymentMethod === "SPLIT" ? cashAmount : 0;
-      const amountUpi = paymentMethod === "UPI" ? finalAmount : paymentMethod === "SPLIT" ? finalAmount - cashAmount : 0;
+      const finalAmountNum = parseFloat(finalAmount) || 0;
+      const cashAmountNum = parseFloat(cashAmount) || 0;
 
-      // Update session
+      const amountCash = paymentMethod === "CASH" ? finalAmountNum : paymentMethod === "SPLIT" ? cashAmountNum : 0;
+      const amountUpi = paymentMethod === "UPI" ? finalAmountNum : paymentMethod === "SPLIT" ? finalAmountNum - cashAmountNum : 0;
+
       const { error: sessionError } = await supabase
         .from("sessions")
         .update({
@@ -149,14 +144,13 @@ const SessionManagerModal = ({
           payment_method: paymentMethod,
           amount_cash: amountCash,
           amount_upi: amountUpi,
-          final_amount: finalAmount,
+          final_amount: finalAmountNum,
           calculated_amount: calculatedAmount,
         })
         .eq("id", session.id);
 
       if (sessionError) throw sessionError;
 
-      // Update device
       const { error: deviceError } = await supabase
         .from("devices")
         .update({
@@ -201,15 +195,14 @@ const SessionManagerModal = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="font-orbitron">
               Session Manager - {device.name}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6">
-            {/* Duration and Bill */}
+          <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-muted/50 rounded-lg">
                 <p className="text-sm text-muted-foreground">Duration</p>
@@ -220,12 +213,11 @@ const SessionManagerModal = ({
               <div className="p-4 bg-muted/50 rounded-lg">
                 <p className="text-sm text-muted-foreground">Current Bill</p>
                 <p className="text-2xl font-orbitron text-secondary">
-                  ₹{finalAmount}
+                  ₹{calculatedAmount + itemsTotal}
                 </p>
               </div>
             </div>
 
-            {/* Items */}
             <div>
               <div className="flex justify-between items-center mb-2">
                 <Label>Items Added</Label>
@@ -262,58 +254,85 @@ const SessionManagerModal = ({
               </div>
             </div>
 
-            {/* Override Final Amount */}
             <div className="space-y-2">
               <Label>Override Final Amount (Optional)</Label>
               <Input
                 type="number"
                 value={finalAmount}
-                onChange={(e) => setFinalAmount(parseInt(e.target.value) || 0)}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setFinalAmount(e.target.value)}
                 className="bg-muted/50"
+                placeholder="Enter final amount"
               />
             </div>
 
-            {/* Payment Method */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label>Payment Method</Label>
-              <Select
-                value={paymentMethod}
-                onValueChange={(value) =>
-                  setPaymentMethod(value as "CASH" | "UPI" | "SPLIT")
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CASH">Cash</SelectItem>
-                  <SelectItem value="UPI">UPI</SelectItem>
-                  <SelectItem value="SPLIT">Split Payment</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-3 gap-3">
+                <Button
+                  variant={paymentMethod === "CASH" ? "default" : "outline"}
+                  className={cn(
+                    "flex flex-col items-center justify-center h-20 gap-2 transition-all",
+                    paymentMethod === "CASH" && "ring-2 ring-primary ring-offset-2"
+                  )}
+                  onClick={() => setPaymentMethod("CASH")}
+                >
+                  <Wallet className="h-6 w-6" />
+                  <span className="font-orbitron">CASH</span>
+                </Button>
+                
+                <Button
+                  variant={paymentMethod === "UPI" ? "default" : "outline"}
+                  className={cn(
+                    "flex flex-col items-center justify-center h-20 gap-2 transition-all",
+                    paymentMethod === "UPI" && "ring-2 ring-primary ring-offset-2"
+                  )}
+                  onClick={() => setPaymentMethod("UPI")}
+                >
+                  <Smartphone className="h-6 w-6" />
+                  <span className="font-orbitron">UPI</span>
+                </Button>
+
+                <Button
+                  variant={paymentMethod === "SPLIT" ? "default" : "outline"}
+                  className={cn(
+                    "flex flex-col items-center justify-center h-20 gap-2 transition-all",
+                    paymentMethod === "SPLIT" && "ring-2 ring-primary ring-offset-2"
+                  )}
+                  onClick={() => setPaymentMethod("SPLIT")}
+                >
+                  <Split className="h-6 w-6" />
+                  <span className="font-orbitron">SPLIT</span>
+                </Button>
+              </div>
             </div>
 
-            {/* Split Payment */}
             {paymentMethod === "SPLIT" && (
-              <div className="space-y-2">
+              <div className="space-y-2 animate-in slide-in-from-top-2 fade-in duration-300">
                 <Label>Cash Amount</Label>
                 <Input
                   type="number"
                   value={cashAmount}
-                  onChange={(e) => setCashAmount(parseInt(e.target.value) || 0)}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setCashAmount(e.target.value)}
                   placeholder="Enter cash amount"
                   className="bg-muted/50"
                 />
-                <p className="text-sm text-muted-foreground">
-                  UPI: ₹{finalAmount - cashAmount}
-                </p>
+                <div className="flex justify-between text-sm text-muted-foreground px-1">
+                  <span>Total: ₹{finalAmount || 0}</span>
+                  <span className="font-medium text-primary">
+                    UPI Balance: ₹{Math.max(0, (parseFloat(finalAmount) || 0) - (parseFloat(cashAmount) || 0))}
+                  </span>
+                </div>
               </div>
             )}
+          </div>
 
+          <div className="pt-4 border-t mt-auto">
             <Button
               onClick={handleCheckout}
               disabled={loading}
-              className="w-full"
+              className="w-full h-12 text-lg font-orbitron"
             >
               {loading ? "Processing..." : "Complete Session"}
             </Button>

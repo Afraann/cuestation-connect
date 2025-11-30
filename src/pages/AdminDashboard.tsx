@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, Settings } from "lucide-react";
+import { LogOut, Settings, Menu, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AnalysisSection from "@/components/admin/AnalysisSection";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, max, min } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const AdminDashboard = () => {
   const { logout, user } = useAuth();
@@ -16,7 +24,7 @@ const AdminDashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   // Business constraints
-  const businessStartDate = new Date(2025, 10, 28); // Nov 28, 2025
+  const businessStartDate = new Date(2025, 10, 28); // Nov 28, 2025 (Month 10 is Nov)
   const today = new Date();
 
   // 1. Daily Range
@@ -42,25 +50,45 @@ const AdminDashboard = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <h1 className="text-2xl md:text-3xl font-orbitron text-gradient-ps5">
-          The CueStation
+          Admin Dashboard
         </h1>
-        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-          <span className="text-muted-foreground hidden md:inline-block text-sm">
-            {user?.username} ({user?.role})
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/settings")}
-            className="text-muted-foreground hover:text-primary"
-          >
-            <Settings className="h-5 w-5 mr-2" />
-            Settings
-          </Button>
-          <Button variant="ghost" size="sm" onClick={logout} className="text-destructive hover:text-destructive/80">
-            <LogOut className="h-5 w-5 mr-2" />
-            Logout
-          </Button>
+        
+        {/* Hamburger Menu Section */}
+        <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="rounded-full h-10 w-10 bg-background/80 backdrop-blur border-primary/20 shadow-lg hover:bg-zinc-800"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2">
+                <User className="h-4 w-4" />
+                <div className="flex flex-col">
+                  <span className="font-medium">{user?.username}</span>
+                  <span className="text-xs text-muted-foreground capitalize">{user?.role?.toLowerCase()}</span>
+                </div>
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/settings")} className="gap-2 cursor-pointer">
+                <Settings className="h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive gap-2 cursor-pointer">
+                <LogOut className="h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

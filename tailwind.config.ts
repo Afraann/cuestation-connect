@@ -57,6 +57,14 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        ps5: "hsl(var(--ps5-accent))",
+        billiard: "hsl(var(--billiard-accent))",
+        occupied: "hsl(var(--occupied))",
+        available: "hsl(var(--available))",
+      },
+      fontFamily: {
+        orbitron: ['Orbitron', 'sans-serif'],
+        inter: ['Inter', 'sans-serif'],
       },
       borderRadius: {
         lg: "var(--radius)",

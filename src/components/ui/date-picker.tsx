@@ -20,12 +20,12 @@ export function DatePicker({ date, setDate, className }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
   
   // Business Start Date: November 28, 2025
-  const businessStartDate = new Date(2025, 10, 28); // Month is 0-indexed (10 = Nov)
+  const businessStartDate = new Date(2025, 10, 28);
   const today = new Date();
 
   const handleSelect = (selectedDate: Date | undefined) => {
     setDate(selectedDate);
-    setOpen(false); // Auto-close the popover upon selection
+    setOpen(false);
   };
 
   return (
@@ -34,7 +34,7 @@ export function DatePicker({ date, setDate, className }: DatePickerProps) {
         <Button
           variant={"outline"}
           className={cn(
-            "w-[240px] justify-center text-center font-normal", // Changed to center alignment
+            "justify-center text-center font-normal",
             !date && "text-muted-foreground",
             className
           )}

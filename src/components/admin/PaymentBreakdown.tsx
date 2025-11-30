@@ -1,39 +1,36 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateRange } from "react-day-picker";
 
 interface PaymentBreakdownProps {
-  selectedDate: Date;
+  dateRange: DateRange | undefined;
 }
 
-const PaymentBreakdown = ({ selectedDate }: PaymentBreakdownProps) => {
+const PaymentBreakdown = ({ dateRange }: PaymentBreakdownProps) => {
   const [cashAmount, setCashAmount] = useState(0);
   const [upiAmount, setUpiAmount] = useState(0);
 
   useEffect(() => {
-    fetchPaymentBreakdown();
-  }, [selectedDate]);
+    if (dateRange?.from && dateRange?.to) {
+      fetchPaymentBreakdown();
+    }
+  }, [dateRange]);
 
   const fetchPaymentBreakdown = async () => {
-    const startOfMonth = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      1
-    );
-    const endOfMonth = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth() + 1,
-      0,
-      23,
-      59,
-      59
-    );
+    if (!dateRange?.from || !dateRange?.to) return;
+
+    const start = new Date(dateRange.from);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(dateRange.to);
+    end.setHours(23, 59, 59, 999);
 
     const { data } = await supabase
       .from("sessions")
       .select("amount_cash, amount_upi")
-      .gte("created_at", startOfMonth.toISOString())
-      .lte("created_at", endOfMonth.toISOString())
+      .gte("created_at", start.toISOString())
+      .lte("created_at", end.toISOString())
       .eq("status", "COMPLETED");
 
     const cash = data?.reduce((sum, s) => sum + (s.amount_cash || 0), 0) || 0;
@@ -49,39 +46,34 @@ const PaymentBreakdown = ({ selectedDate }: PaymentBreakdownProps) => {
 
   return (
     <Card className="border-border/50 bg-card">
-      <CardHeader>
-        <CardTitle className="text-lg font-orbitron">Payment Breakdown</CardTitle>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground font-orbitron">Payment Split</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="flex h-8 rounded-lg overflow-hidden">
+        <div className="space-y-3">
+          {/* Visual Bar */}
+          <div className="flex h-4 rounded-full overflow-hidden bg-muted">
             <div
-              className="bg-billiard flex items-center justify-center text-xs font-medium"
+              className="bg-billiard flex items-center justify-center transition-all duration-500"
               style={{ width: `${cashPercentage}%` }}
-            >
-              {cashPercentage > 15 && `${Math.round(cashPercentage)}%`}
-            </div>
+            />
             <div
-              className="bg-ps5 flex items-center justify-center text-xs font-medium"
+              className="bg-ps5 flex items-center justify-center transition-all duration-500"
               style={{ width: `${upiPercentage}%` }}
-            >
-              {upiPercentage > 15 && `${Math.round(upiPercentage)}%`}
-            </div>
+            />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+
+          {/* Legend */}
+          <div className="flex justify-between text-sm">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-billiard" />
-              <div>
-                <p className="text-sm text-muted-foreground">Cash</p>
-                <p className="font-orbitron">₹{cashAmount.toLocaleString()}</p>
-              </div>
+              <div className="w-3 h-3 rounded-full bg-billiard" />
+              <span className="text-muted-foreground">Cash:</span>
+              <span className="font-semibold">₹{cashAmount.toLocaleString()}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-ps5" />
-              <div>
-                <p className="text-sm text-muted-foreground">UPI</p>
-                <p className="font-orbitron">₹{upiAmount.toLocaleString()}</p>
-              </div>
+              <div className="w-3 h-3 rounded-full bg-ps5" />
+              <span className="text-muted-foreground">UPI:</span>
+              <span className="font-semibold">₹{upiAmount.toLocaleString()}</span>
             </div>
           </div>
         </div>

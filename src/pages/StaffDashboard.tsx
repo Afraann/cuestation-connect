@@ -8,6 +8,8 @@ import StartSessionModal from "@/components/StartSessionModal";
 import SessionManagerModal from "@/components/SessionManagerModal";
 import DailyStatsModal from "@/components/DailyStatsModal";
 import AddExpenseModal from "@/components/AddExpenseModal"; // Import the new component
+import DirectSaleModal from "@/components/DirectSaleModal";
+import { ShoppingCart } from "lucide-react"; // Add icon
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +45,7 @@ const StaffDashboard = () => {
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
   const [isDailyStatsOpen, setIsDailyStatsOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false); // New state
+  const [isDirectSaleOpen, setIsDirectSaleOpen] = useState(false);
 
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
 
@@ -255,6 +258,22 @@ const StaffDashboard = () => {
       <AddExpenseModal
         open={isExpenseModalOpen}
         onOpenChange={setIsExpenseModalOpen}
+      />
+
+      {/* Direct Sale Button - Floating Bottom Right for Mobile Access */}
+      <div className="fixed bottom-6 right-6 z-40">
+          <Button 
+              className="h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 glow-ps5"
+              onClick={() => setIsDirectSaleOpen(true)}
+          >
+              <ShoppingCart className="h-6 w-6 text-primary-foreground" />
+          </Button>
+      </div>
+
+      {/* Direct Sale Modal */}
+      <DirectSaleModal 
+          open={isDirectSaleOpen} 
+          onOpenChange={setIsDirectSaleOpen} 
       />
 
     </div>

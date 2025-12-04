@@ -8,14 +8,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { PackageX, ShoppingBag } from "lucide-react";
+import { PackageX, ShoppingBag, Plus, Minus, ShoppingCart, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface Product {
   id: string;
   name: string;
   price: number;
   is_available: boolean;
-  stock: number; // Ensure stock is part of the interface
+  stock: number;
 }
 
 interface AddItemPopupProps {
@@ -32,16 +33,19 @@ const AddItemPopup = ({
   onItemAdded,
 }: AddItemPopupProps) => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
       fetchProducts();
+      setCart({}); // Reset cart on open
     }
   }, [open]);
 
   const fetchProducts = async () => {
-    // We select stock here to display it
+    setLoading(true);
     const { data, error } = await supabase
       .from("products")
       .select("*")
@@ -51,98 +55,209 @@ const AddItemPopup = ({
 
     if (error) {
       console.error("Error fetching products:", error);
-      return;
+    } else {
+      setProducts(data || []);
     }
-
-    setProducts(data || []);
+    setLoading(false);
   };
 
-  const handleAddItem = async (product: Product) => {
-    setLoading(true);
+  const updateQuantity = (product: Product, delta: number) => {
+    setCart((prev) => {
+      const currentQty = prev[product.id] || 0;
+      const newQty = currentQty + delta;
+
+      // Validation: Prevent going below 0 or above stock
+      if (newQty < 0) return prev;
+      if (newQty > product.stock) {
+        toast.error(`Only ${product.stock} ${product.name} available`);
+        return prev;
+      }
+
+      // If quantity is 0, remove key from cart
+      if (newQty === 0) {
+        const { [product.id]: _, ...rest } = prev;
+        return rest;
+      }
+
+      return { ...prev, [product.id]: newQty };
+    });
+  };
+
+  const calculateTotal = () => {
+    let count = 0;
+    let price = 0;
+    Object.entries(cart).forEach(([id, qty]) => {
+      const product = products.find((p) => p.id === id);
+      if (product) {
+        count += qty;
+        price += qty * product.price;
+      }
+    });
+    return { count, price };
+  };
+
+  const handleCheckout = async () => {
+    setSubmitting(true);
+    const cartItems = Object.entries(cart);
+
+    if (cartItems.length === 0) return;
 
     try {
-      // CHANGED: Replaced .insert() with .rpc() to handle stock deduction
-      const { error } = await supabase.rpc("add_session_item", {
-        p_session_id: sessionId,
-        p_product_id: product.id,
-        p_quantity: 1,
-        p_price: product.price
+      // Process all items
+      // Note: We use Promise.all to send requests in parallel. 
+      // Ideally, a batch RPC function would be better for atomicity, but this works for now.
+      const promises = cartItems.map(([productId, quantity]) => {
+        const product = products.find((p) => p.id === productId);
+        if (!product) return Promise.resolve();
+
+        return supabase.rpc("add_session_item", {
+          p_session_id: sessionId,
+          p_product_id: productId,
+          p_quantity: quantity,
+          p_price: product.price,
+        });
       });
 
-      if (error) throw error;
-
-      toast.success(`${product.name} added`);
-      onItemAdded();
+      const results = await Promise.all(promises);
       
-      // Refresh local list to show updated stock count immediately
-      fetchProducts();
-    } catch (error: any) {
-      console.error("Error adding item:", error);
-      if (error.message?.includes("Insufficient stock")) {
-        toast.error(`Out of stock: ${product.name}`);
+      // Check for errors in results
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        console.error("Some items failed:", errors);
+        toast.error("Some items could not be added. Check stock.");
       } else {
-        toast.error("Failed to add item");
+        toast.success("Items added to session");
+        onItemAdded();
+        onOpenChange(false);
       }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      toast.error("Failed to process items");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
+
+  const { count: totalItems, price: totalPrice } = calculateTotal();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="font-orbitron">Add Item</DialogTitle>
+      <DialogContent className="max-h-[85vh] flex flex-col p-0 gap-0 sm:max-w-md">
+        <DialogHeader className="p-4 border-b">
+          <DialogTitle className="font-orbitron flex justify-between items-center">
+            <span>Add Items</span>
+            {totalItems > 0 && (
+              <Badge variant="secondary" className="font-mono">
+                {totalItems} in cart
+              </Badge>
+            )}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto pr-1">
+        <div className="flex-1 overflow-y-auto p-4">
           <div className="grid grid-cols-2 gap-3">
             {products.map((product) => {
+              const qtyInCart = cart[product.id] || 0;
               const isOutOfStock = product.stock <= 0;
-              
+              const available = product.stock - qtyInCart;
+
               return (
-                <Button
+                <div
                   key={product.id}
-                  onClick={() => handleAddItem(product)}
-                  disabled={loading || isOutOfStock}
-                  variant={isOutOfStock ? "ghost" : "outline"}
-                  className={`h-24 flex flex-col items-center justify-center relative overflow-hidden ${
-                    isOutOfStock ? "opacity-50" : "hover:border-primary/50"
-                  }`}
+                  className={`relative flex flex-col bg-card border rounded-xl overflow-hidden transition-all ${
+                    qtyInCart > 0 ? "border-primary/50 ring-1 ring-primary/20" : "border-border/50"
+                  } ${isOutOfStock ? "opacity-60 grayscale" : ""}`}
                 >
                   {/* Stock Badge */}
-                  <div className={`absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                    isOutOfStock 
-                      ? "bg-destructive/10 text-destructive" 
-                      : product.stock <= 5 
-                        ? "bg-yellow-500/10 text-yellow-500" 
-                        : "bg-muted text-muted-foreground"
-                  }`}>
-                    {isOutOfStock ? "Empty" : `${product.stock}`}
+                  <div className="absolute top-2 right-2 z-10">
+                    {isOutOfStock ? (
+                      <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
+                        Out
+                      </Badge>
+                    ) : (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
+                        product.stock <= 5 
+                          ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                          : "bg-muted text-muted-foreground border-border"
+                      }`}>
+                        {product.stock} left
+                      </span>
+                    )}
                   </div>
 
-                  <span className="font-medium text-base mb-1 text-center leading-tight px-1">
-                    {product.name}
-                  </span>
-                  <span className="text-sm text-muted-foreground font-orbitron">
-                    ₹{product.price}
-                  </span>
-                  
-                  {isOutOfStock && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-[1px]">
-                      <PackageX className="h-8 w-8 text-muted-foreground/50" />
+                  <button
+                    className="flex-1 flex flex-col items-center justify-center p-3 pt-6 min-h-[100px] outline-none"
+                    onClick={() => !isOutOfStock && updateQuantity(product, 1)}
+                    disabled={isOutOfStock}
+                  >
+                    <span className="font-medium text-sm text-center leading-tight mb-1">
+                      {product.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-orbitron">
+                      ₹{product.price}
+                    </span>
+                  </button>
+
+                  {/* Quantity Controls */}
+                  {qtyInCart > 0 && (
+                    <div className="flex items-center justify-between p-1 bg-muted/50 border-t border-border/50">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-lg hover:bg-background hover:text-destructive"
+                        onClick={() => updateQuantity(product, -1)}
+                      >
+                        {qtyInCart === 1 ? <Trash2 className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                      </Button>
+                      <span className="text-sm font-bold w-6 text-center font-orbitron">
+                        {qtyInCart}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-lg hover:bg-background hover:text-primary"
+                        onClick={() => updateQuantity(product, 1)}
+                        disabled={available <= 0}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
                     </div>
                   )}
-                </Button>
+                </div>
               );
             })}
-            
-            {products.length === 0 && (
-              <div className="col-span-2 py-8 text-center text-muted-foreground flex flex-col items-center gap-2">
-                <ShoppingBag className="h-10 w-10 opacity-20" />
+
+            {!loading && products.length === 0 && (
+              <div className="col-span-2 py-10 text-center text-muted-foreground flex flex-col items-center gap-3">
+                <ShoppingBag className="h-12 w-12 opacity-10" />
                 <p>No products available</p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Checkout Bar */}
+        <div className="p-4 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Total</span>
+              <span className="text-xl font-bold font-orbitron text-primary">
+                ₹{totalPrice}
+              </span>
+            </div>
+            <Button 
+              className="flex-1 h-12 font-orbitron text-base shadow-lg shadow-primary/20"
+              onClick={handleCheckout}
+              disabled={submitting || totalItems === 0}
+            >
+              {submitting ? (
+                "Adding..."
+              ) : (
+                <>
+                  Add to Session <ShoppingCart className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </DialogContent>

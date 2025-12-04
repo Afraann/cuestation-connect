@@ -9,7 +9,7 @@ import {
   min 
 } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import RevenueCard from "@/components/admin/RevenueCard";
+import FinancialSummary from "@/components/admin/FinancialSummary";
 import PaymentBreakdown from "@/components/admin/PaymentBreakdown";
 import InsightsGrid from "@/components/admin/InsightsGrid";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,7 +28,8 @@ const AnalysisSection = ({ title, variant }: AnalysisSectionProps) => {
   const today = new Date();
 
   const [currentDate, setCurrentDate] = useState<Date>(today);
-  const [revenue, setRevenue] = useState<number | null>(null);
+  const [revenue, setRevenue] = useState<number>(0);
+  const [expenses, setExpenses] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   // Calculate the DateRange based on variant + currentDate + constraints
@@ -54,11 +55,11 @@ const AnalysisSection = ({ title, variant }: AnalysisSectionProps) => {
 
   useEffect(() => {
     if (dateRange?.from && dateRange?.to) {
-      fetchRevenue();
+      fetchFinancials();
     }
   }, [dateRange]);
 
-  const fetchRevenue = async () => {
+  const fetchFinancials = async () => {
     setLoading(true);
     if (!dateRange?.from || !dateRange?.to) return;
 
@@ -67,15 +68,27 @@ const AnalysisSection = ({ title, variant }: AnalysisSectionProps) => {
     const end = new Date(dateRange.to);
     end.setHours(23, 59, 59, 999);
 
-    const { data } = await supabase
+    // 1. Fetch Revenue (Sessions)
+    const { data: sessionData } = await supabase
       .from("sessions")
       .select("final_amount")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .eq("status", "COMPLETED");
 
-    const total = data?.reduce((sum, s) => sum + (s.final_amount || 0), 0) || 0;
-    setRevenue(total);
+    const totalRevenue = sessionData?.reduce((sum, s) => sum + (s.final_amount || 0), 0) || 0;
+    
+    // 2. Fetch Expenses
+    const { data: expenseData } = await supabase
+      .from("expenses")
+      .select("amount")
+      .gte("created_at", start.toISOString())
+      .lte("created_at", end.toISOString());
+
+    const totalExpenses = expenseData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+
+    setRevenue(totalRevenue);
+    setExpenses(totalExpenses);
     setLoading(false);
   };
 
@@ -83,7 +96,6 @@ const AnalysisSection = ({ title, variant }: AnalysisSectionProps) => {
     if (date) setCurrentDate(date);
   };
 
-  // Shared width class for all pickers to ensure they are exactly the same size
   const pickerClass = "w-[260px] shadow-sm";
 
   return (
@@ -127,7 +139,7 @@ const AnalysisSection = ({ title, variant }: AnalysisSectionProps) => {
       {loading ? (
         <Skeleton className="h-32 w-full rounded-xl" />
       ) : (
-        <RevenueCard title="Total Revenue" amount={revenue || 0} />
+        <FinancialSummary revenue={revenue} expenses={expenses} />
       )}
 
       <div className="flex-1 flex flex-col gap-4">

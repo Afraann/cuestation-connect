@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import StaffDashboard from "./pages/StaffDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import SessionLedger from "./pages/SessionLedger";
+import ExpenseLedger from "./pages/ExpenseLedger"; // Import here
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -44,6 +45,14 @@ const App = () => (
               element={
                 <ProtectedRoute adminOnly>
                   <SessionLedger />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/expenses" // New Route
+              element={
+                <ProtectedRoute adminOnly>
+                  <ExpenseLedger />
                 </ProtectedRoute>
               }
             />

@@ -6,7 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Wallet, Smartphone, IndianRupee } from "lucide-react";
+import { Wallet, Smartphone, Receipt, TrendingUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DailyStatsModalProps {
   open: boolean;
@@ -16,6 +17,7 @@ interface DailyStatsModalProps {
 const DailyStatsModal = ({ open, onOpenChange }: DailyStatsModalProps) => {
   const [dailyCash, setDailyCash] = useState(0);
   const [dailyUpi, setDailyUpi] = useState(0);
+  const [dailyExpenses, setDailyExpenses] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -32,7 +34,8 @@ const DailyStatsModal = ({ open, onOpenChange }: DailyStatsModalProps) => {
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const { data } = await supabase
+    // 1. Fetch Income
+    const { data: sessionData } = await supabase
       .from("sessions")
       .select("amount_cash, amount_upi, final_amount, payment_method")
       .gte("created_at", startOfDay.toISOString())
@@ -42,7 +45,7 @@ const DailyStatsModal = ({ open, onOpenChange }: DailyStatsModalProps) => {
     let cash = 0;
     let upi = 0;
 
-    data?.forEach((session) => {
+    sessionData?.forEach((session) => {
       if (session.payment_method === "CASH") {
         cash += session.final_amount || 0;
       } else if (session.payment_method === "UPI") {
@@ -50,31 +53,35 @@ const DailyStatsModal = ({ open, onOpenChange }: DailyStatsModalProps) => {
       } else if (session.payment_method === "SPLIT") {
         cash += session.amount_cash || 0;
         upi += session.amount_upi || 0;
-      } else {
-          // Fallback logic if needed, similar to Admin Dashboard
-          // Assuming CASH default if not specified, or handle as per business logic
-          // For now, let's stick to explicit types to avoid confusion
-          // If legacy data exists without payment_method, it might be ignored or need handling
-          if (!session.payment_method) {
-             cash += session.final_amount || 0; // Default to cash for old records?
-          }
       }
     });
 
     setDailyCash(cash);
     setDailyUpi(upi);
+
+    // 2. Fetch Expenses
+    const { data: expenseData } = await supabase
+      .from("expenses")
+      .select("amount")
+      .gte("created_at", startOfDay.toISOString())
+      .lte("created_at", endOfDay.toISOString());
+
+    const expenses = expenseData?.reduce((sum, item) => sum + item.amount, 0) || 0;
+    setDailyExpenses(expenses);
+
     setLoading(false);
   };
 
-  const total = dailyCash + dailyUpi;
+  const totalRevenue = dailyCash + dailyUpi;
+  const netCashInHand = dailyCash - dailyExpenses;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-card border-border shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="font-orbitron text-center">
+          <DialogTitle className="font-orbitron text-center text-xl text-gradient-ps5">
             Today's Collection
-            <span className="block text-sm text-muted-foreground font-sans font-normal mt-1">
+            <span className="block text-xs text-muted-foreground font-sans font-normal mt-1 tracking-wide">
               {new Date().toLocaleDateString("en-IN", {
                 weekday: "long",
                 year: "numeric",
@@ -86,44 +93,69 @@ const DailyStatsModal = ({ open, onOpenChange }: DailyStatsModalProps) => {
         </DialogHeader>
 
         <div className="py-4 space-y-6">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground uppercase tracking-widest mb-2">
-              Total Revenue
+          {/* Top Section: Net Cash in Hand */}
+          <div className="relative overflow-hidden rounded-xl border border-secondary/30 bg-secondary/5 p-6 text-center shadow-[0_0_15px_rgba(34,197,94,0.1)]">
+            <div className="absolute top-0 right-0 p-3 opacity-10">
+              <Wallet className="w-16 h-16 text-secondary" />
+            </div>
+            
+            <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">
+              Net Cash In Drawer
             </p>
-            <p className="text-5xl font-black text-foreground tracking-tighter">
-              ₹{total.toLocaleString()}
+            <p className="text-5xl font-black font-orbitron text-secondary tracking-tight">
+              ₹{netCashInHand.toLocaleString()}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-2 font-medium">
+              (Total Cash Received - Expenses)
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl flex flex-col items-center justify-center gap-2">
-              <div className="p-2 bg-emerald-500 text-white rounded-full">
-                <Wallet size={20} />
+            {/* Cash Collected */}
+            <div className="rounded-lg border border-border bg-card p-4 flex flex-col items-center justify-center gap-2 hover:border-secondary/30 transition-colors">
+              <div className="p-2 bg-secondary/10 text-secondary rounded-full">
+                <TrendingUp size={18} />
               </div>
               <div className="text-center">
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
-                  Cash
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Cash Revenue
                 </p>
-                <p className="text-xl font-black text-emerald-700">
+                <p className="text-xl font-bold font-orbitron text-foreground">
                   ₹{dailyCash.toLocaleString()}
                 </p>
               </div>
             </div>
 
-            <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl flex flex-col items-center justify-center gap-2">
-              <div className="p-2 bg-blue-500 text-white rounded-full">
-                <Smartphone size={20} />
+            {/* Expenses */}
+            <div className="rounded-lg border border-border bg-card p-4 flex flex-col items-center justify-center gap-2 hover:border-destructive/30 transition-colors">
+              <div className="p-2 bg-destructive/10 text-destructive rounded-full">
+                <Receipt size={18} />
               </div>
               <div className="text-center">
-                <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-                  UPI
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Expenses
                 </p>
-                <p className="text-xl font-black text-blue-700">
-                  ₹{dailyUpi.toLocaleString()}
+                <p className="text-xl font-bold font-orbitron text-destructive">
+                  - ₹{dailyExpenses.toLocaleString()}
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Footer Stats: Total Revenue & UPI */}
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
+             <div className="text-center space-y-1">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Revenue</p>
+                <p className="font-bold font-orbitron text-lg text-foreground">₹{totalRevenue.toLocaleString()}</p>
+             </div>
+             <div className="text-center space-y-1">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center justify-center gap-1">
+                  <Smartphone className="w-3 h-3" /> UPI
+                </p>
+                <p className="font-bold font-orbitron text-lg text-primary">₹{dailyUpi.toLocaleString()}</p>
+             </div>
+          </div>
+
         </div>
       </DialogContent>
     </Dialog>

@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, User, Menu, BarChart3 } from "lucide-react";
+import { LogOut, User, Menu, BarChart3, Receipt } from "lucide-react";
 import DeviceCard from "@/components/DeviceCard";
 import StartSessionModal from "@/components/StartSessionModal";
 import SessionManagerModal from "@/components/SessionManagerModal";
 import DailyStatsModal from "@/components/DailyStatsModal";
+import AddExpenseModal from "@/components/AddExpenseModal"; // Import the new component
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,11 +37,14 @@ const StaffDashboard = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [deviceSessions, setDeviceSessions] = useState<Record<string, string>>({});
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  
+  // Modals state
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
-  const [currentSession, setCurrentSession] = useState<Session | null>(null);
-  
   const [isDailyStatsOpen, setIsDailyStatsOpen] = useState(false);
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false); // New state
+
+  const [currentSession, setCurrentSession] = useState<Session | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -127,7 +131,7 @@ const StaffDashboard = () => {
       <div className="fixed top-4 right-4 z-50 flex gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="rounded-full h-10 w-10 bg-background/80 backdrop-blur border-primary/20 hover:bg-primary/10 shadow-lg">
+            <Button variant="outline" size="icon" className="rounded-full h-10 w-10 bg-background/80 backdrop-blur border-primary/20 shadow-lg hover:bg-zinc-800">
               <Menu className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
@@ -143,10 +147,15 @@ const StaffDashboard = () => {
             </DropdownMenuItem>
             
             <DropdownMenuSeparator />
-            {/* Moved Today's Revenue here for all views */}
+            
             <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => setIsDailyStatsOpen(true)}>
               <BarChart3 className="h-4 w-4" />
-              Today's Revenue
+              Today's Collection
+            </DropdownMenuItem>
+
+            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => setIsExpenseModalOpen(true)}>
+              <Receipt className="h-4 w-4" />
+              Record Expense
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
@@ -236,9 +245,16 @@ const StaffDashboard = () => {
         </>
       )}
 
+      {/* Stats Modal */}
       <DailyStatsModal 
         open={isDailyStatsOpen} 
         onOpenChange={setIsDailyStatsOpen} 
+      />
+
+      {/* Add Expense Modal */}
+      <AddExpenseModal
+        open={isExpenseModalOpen}
+        onOpenChange={setIsExpenseModalOpen}
       />
 
     </div>

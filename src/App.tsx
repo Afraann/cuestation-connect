@@ -9,7 +9,8 @@ import Login from "./pages/Login";
 import StaffDashboard from "./pages/StaffDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import SessionLedger from "./pages/SessionLedger";
-import ExpenseLedger from "./pages/ExpenseLedger"; // Import here
+import ExpenseLedger from "./pages/ExpenseLedger";
+import DirectSalesLedger from "./pages/DirectSalesLedger"; // Import here
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -49,10 +50,18 @@ const App = () => (
               }
             />
             <Route
-              path="/admin/expenses" // New Route
+              path="/admin/expenses"
               element={
                 <ProtectedRoute adminOnly>
                   <ExpenseLedger />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/direct-sales" // New Route
+              element={
+                <ProtectedRoute adminOnly>
+                  <DirectSalesLedger />
                 </ProtectedRoute>
               }
             />

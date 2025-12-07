@@ -76,9 +76,18 @@ const AnalysisSection = ({ title, variant }: AnalysisSectionProps) => {
       .lte("created_at", end.toISOString())
       .eq("status", "COMPLETED");
 
-    const totalRevenue = sessionData?.reduce((sum, s) => sum + (s.final_amount || 0), 0) || 0;
+    const sessionRevenue = sessionData?.reduce((sum, s) => sum + (s.final_amount || 0), 0) || 0;
+
+    // 2. Fetch Revenue (Direct Sales)
+    const { data: directSalesData } = await supabase
+      .from("direct_sales")
+      .select("total_amount")
+      .gte("created_at", start.toISOString())
+      .lte("created_at", end.toISOString());
+
+    const directRevenue = directSalesData?.reduce((sum, s) => sum + (s.total_amount || 0), 0) || 0;
     
-    // 2. Fetch Expenses
+    // 3. Fetch Expenses
     const { data: expenseData } = await supabase
       .from("expenses")
       .select("amount")
@@ -87,7 +96,7 @@ const AnalysisSection = ({ title, variant }: AnalysisSectionProps) => {
 
     const totalExpenses = expenseData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
 
-    setRevenue(totalRevenue);
+    setRevenue(sessionRevenue + directRevenue);
     setExpenses(totalExpenses);
     setLoading(false);
   };

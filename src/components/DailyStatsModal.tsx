@@ -33,7 +33,7 @@ const DailyStatsModal = ({ open, onOpenChange }: DailyStatsModalProps) => {
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // 1. Fetch Income
+    // 1. Fetch Session Income
     const { data: sessionData } = await supabase
       .from("sessions")
       .select("amount_cash, amount_upi, final_amount, payment_method")
@@ -55,10 +55,23 @@ const DailyStatsModal = ({ open, onOpenChange }: DailyStatsModalProps) => {
       }
     });
 
+    // 2. Fetch Direct Sales Income (NEW)
+    const { data: directSalesData } = await supabase
+      .from("direct_sales")
+      .select("amount_cash, amount_upi, total_amount, payment_method")
+      .gte("created_at", startOfDay.toISOString())
+      .lte("created_at", endOfDay.toISOString());
+
+    directSalesData?.forEach((sale) => {
+      // Direct sales table already has explicit cash/upi columns populated
+      cash += sale.amount_cash || 0;
+      upi += sale.amount_upi || 0;
+    });
+
     setDailyCash(cash);
     setDailyUpi(upi);
 
-    // 2. Fetch Expenses
+    // 3. Fetch Expenses
     const { data: expenseData } = await supabase
       .from("expenses")
       .select("amount")

@@ -7,8 +7,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { PackageX, ShoppingBag, Plus, Minus, Wallet, Smartphone, ShoppingCart } from "lucide-react";
+import { Plus, Minus, Wallet, Smartphone, ShoppingCart, Split } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +37,10 @@ const DirectSaleModal = ({
   const [cart, setCart] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "UPI" | null>(null);
+  
+  // Payment States
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "UPI" | "SPLIT" | null>(null);
+  const [cashAmount, setCashAmount] = useState<string>("");
   const [step, setStep] = useState<"SELECT" | "PAY">("SELECT");
 
   useEffect(() => {
@@ -44,6 +49,7 @@ const DirectSaleModal = ({
       setCart({});
       setStep("SELECT");
       setPaymentMethod(null);
+      setCashAmount("");
     }
   }, [open]);
 
@@ -104,17 +110,23 @@ const DirectSaleModal = ({
     }
 
     setSubmitting(true);
+    const { price: totalPrice } = calculateTotal();
+    
+    // Calculate Split Amounts
+    const cashVal = parseFloat(cashAmount) || 0;
+    
+    // Determine final split
+    const finalCash = paymentMethod === "CASH" ? totalPrice : (paymentMethod === "SPLIT" ? cashVal : 0);
+    const finalUpi = paymentMethod === "UPI" ? totalPrice : (paymentMethod === "SPLIT" ? totalPrice - cashVal : 0);
+
     const cartItems = Object.entries(cart);
 
     try {
-      // 1. Create a "Direct Sale" session record (Optional, depending on how strict your FK is)
-      // For now, we are inserting into session_items with NULL session_id as per SQL update
-      
+      // 1. Deduct Stock (Session Items with NULL session_id)
       const promises = cartItems.map(([productId, quantity]) => {
         const product = products.find((p) => p.id === productId);
         if (!product) return Promise.resolve();
 
-        // Note: We use the same function, passing NULL as session_id
         return supabase.rpc("add_session_item", {
           p_session_id: null, 
           p_product_id: productId,
@@ -125,11 +137,16 @@ const DirectSaleModal = ({
 
       await Promise.all(promises);
 
-      // Ideally, we should also record this payment somewhere.
-      // Since session_items doesn't store "payment_method", we might rely on the fact 
-      // that we are just deducting stock for now. 
-      // *Future Improvement:* Create a `direct_sales` table to track the cash/upi split.
-      
+      const { error: saleError } = await supabase.from("direct_sales").insert({
+        payment_method: paymentMethod,
+        total_amount: totalPrice,
+        amount_cash: finalCash,
+        amount_upi: finalUpi,
+        items: cart // Optional: store the cart JSON for record
+      });
+
+      if (saleError) throw saleError;
+
       toast.success("Sale completed");
       if (onSaleComplete) onSaleComplete();
       onOpenChange(false);
@@ -151,11 +168,7 @@ const DirectSaleModal = ({
             <span>
                 {step === "SELECT" ? "Counter Sale" : "Payment"}
             </span>
-            {totalItems > 0 && (
-              <Badge variant="secondary" className="font-mono">
-                ₹{totalPrice}
-              </Badge>
-            )}
+            {/* Badge removed here */}
           </DialogTitle>
         </DialogHeader>
 
@@ -209,30 +222,64 @@ const DirectSaleModal = ({
             </div>
           </div>
         ) : (
-          <div className="flex-1 p-6 flex flex-col justify-center gap-6">
+          <div className="flex-1 p-6 flex flex-col justify-start gap-6 overflow-y-auto">
              <div className="text-center">
-                <p className="text-muted-foreground text-sm uppercase tracking-wider mb-2">Total Amount</p>
-                <p className="text-5xl font-black font-orbitron text-primary">₹{totalPrice}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Total Payable</p>
+                <p className="text-4xl font-black font-orbitron text-primary">₹{totalPrice}</p>
              </div>
 
-             <div className="grid grid-cols-2 gap-4">
-                <Button 
-                    variant={paymentMethod === "CASH" ? "default" : "outline"}
-                    className={cn("h-24 flex flex-col gap-2", paymentMethod === "CASH" && "ring-2 ring-primary ring-offset-2")}
-                    onClick={() => setPaymentMethod("CASH")}
-                >
-                    <Wallet className="h-8 w-8" />
-                    <span className="font-orbitron text-lg">CASH</span>
-                </Button>
-                <Button 
-                    variant={paymentMethod === "UPI" ? "default" : "outline"}
-                    className={cn("h-24 flex flex-col gap-2", paymentMethod === "UPI" && "ring-2 ring-primary ring-offset-2")}
-                    onClick={() => setPaymentMethod("UPI")}
-                >
-                    <Smartphone className="h-8 w-8" />
-                    <span className="font-orbitron text-lg">UPI</span>
-                </Button>
+             <div className="space-y-3">
+                <Label className="text-xs text-muted-foreground uppercase">Payment Mode</Label>
+                <div className="grid grid-cols-3 gap-3">
+                    <Button 
+                        variant={paymentMethod === "CASH" ? "default" : "outline"}
+                        className={cn("h-16 flex flex-col gap-1", paymentMethod === "CASH" && "ring-2 ring-primary ring-offset-2")}
+                        onClick={() => setPaymentMethod("CASH")}
+                    >
+                        <Wallet className="h-5 w-5" />
+                        <span className="font-orbitron text-xs">CASH</span>
+                    </Button>
+                    <Button 
+                        variant={paymentMethod === "UPI" ? "default" : "outline"}
+                        className={cn("h-16 flex flex-col gap-1", paymentMethod === "UPI" && "ring-2 ring-primary ring-offset-2")}
+                        onClick={() => setPaymentMethod("UPI")}
+                    >
+                        <Smartphone className="h-5 w-5" />
+                        <span className="font-orbitron text-xs">UPI</span>
+                    </Button>
+                    <Button 
+                        variant={paymentMethod === "SPLIT" ? "default" : "outline"}
+                        className={cn("h-16 flex flex-col gap-1", paymentMethod === "SPLIT" && "ring-2 ring-primary ring-offset-2")}
+                        onClick={() => setPaymentMethod("SPLIT")}
+                    >
+                        <Split className="h-5 w-5" />
+                        <span className="font-orbitron text-xs">SPLIT</span>
+                    </Button>
+                </div>
              </div>
+
+             {/* Split Payment Inputs */}
+             {paymentMethod === "SPLIT" && (
+                <div className="space-y-3 animate-in slide-in-from-top-2 fade-in duration-300 p-4 bg-muted/30 rounded-lg border border-border/50">
+                    <div className="space-y-1.5">
+                        <Label className="text-xs">Cash Received</Label>
+                        <Input
+                            type="number"
+                            value={cashAmount}
+                            onChange={(e) => setCashAmount(e.target.value)}
+                            placeholder="Enter cash amount"
+                            className="bg-background h-10 text-lg font-mono"
+                            autoFocus
+                        />
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                        <span className="text-xs text-muted-foreground">UPI Balance</span>
+                        <span className="text-lg font-bold font-orbitron text-primary">
+                            ₹{Math.max(0, totalPrice - (parseFloat(cashAmount) || 0))}
+                        </span>
+                    </div>
+                </div>
+             )}
           </div>
         )}
 

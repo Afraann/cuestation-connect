@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, Settings, Menu, User, FileText, Receipt } from "lucide-react";
+import { LogOut, Settings, Menu, User, FileText, Receipt, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AnalysisSection from "@/components/admin/AnalysisSection";
@@ -58,6 +58,11 @@ const AdminDashboard = () => {
               <DropdownMenuItem onClick={() => navigate("/admin/expenses")} className="gap-2 cursor-pointer">
                 <Receipt className="h-4 w-4" />
                 Expense Sheet
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={() => navigate("/admin/direct-sales")} className="gap-2 cursor-pointer">
+                <ShoppingCart className="h-4 w-4" />
+                Counter Sales
               </DropdownMenuItem>
 
               <DropdownMenuItem onClick={() => navigate("/settings")} className="gap-2 cursor-pointer">

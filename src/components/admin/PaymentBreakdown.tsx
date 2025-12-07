@@ -26,18 +26,29 @@ const PaymentBreakdown = ({ dateRange }: PaymentBreakdownProps) => {
     const end = new Date(dateRange.to);
     end.setHours(23, 59, 59, 999);
 
-    const { data } = await supabase
+    // 1. Fetch Session Payments
+    const { data: sessionData } = await supabase
       .from("sessions")
       .select("amount_cash, amount_upi")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .eq("status", "COMPLETED");
 
-    const cash = data?.reduce((sum, s) => sum + (s.amount_cash || 0), 0) || 0;
-    const upi = data?.reduce((sum, s) => sum + (s.amount_upi || 0), 0) || 0;
+    const sessionCash = sessionData?.reduce((sum, s) => sum + (s.amount_cash || 0), 0) || 0;
+    const sessionUpi = sessionData?.reduce((sum, s) => sum + (s.amount_upi || 0), 0) || 0;
 
-    setCashAmount(cash);
-    setUpiAmount(upi);
+    // 2. Fetch Direct Sales Payments
+    const { data: salesData } = await supabase
+      .from("direct_sales")
+      .select("amount_cash, amount_upi")
+      .gte("created_at", start.toISOString())
+      .lte("created_at", end.toISOString());
+
+    const salesCash = salesData?.reduce((sum, s) => sum + (s.amount_cash || 0), 0) || 0;
+    const salesUpi = salesData?.reduce((sum, s) => sum + (s.amount_upi || 0), 0) || 0;
+
+    setCashAmount(sessionCash + salesCash);
+    setUpiAmount(sessionUpi + salesUpi);
   };
 
   const total = cashAmount + upiAmount;

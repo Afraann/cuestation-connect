@@ -6,8 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Wallet, Smartphone, Receipt, TrendingUp } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Wallet, Smartphone, Receipt, TrendingUp, DollarSign } from "lucide-react";
 
 interface DailyStatsModalProps {
   open: boolean;
@@ -77,83 +76,81 @@ const DailyStatsModal = ({ open, onOpenChange }: DailyStatsModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="font-orbitron text-center text-xl text-gradient-ps5">
-            Today's Collection
-            <span className="block text-xs text-muted-foreground font-sans font-normal mt-1 tracking-wide">
-              {new Date().toLocaleDateString("en-IN", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </span>
+      <DialogContent className="sm:max-w-sm bg-card border-border shadow-2xl p-4 gap-3">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="font-orbitron text-center text-lg text-foreground">
+            Daily Collection
           </DialogTitle>
+          <p className="text-center text-[10px] text-muted-foreground uppercase tracking-wider">
+            {new Date().toLocaleDateString("en-IN", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+            })}
+          </p>
         </DialogHeader>
 
-        <div className="py-4 space-y-6">
-          {/* Top Section: Net Cash in Hand */}
-          <div className="relative overflow-hidden rounded-xl border border-secondary/30 bg-secondary/5 p-6 text-center shadow-[0_0_15px_rgba(34,197,94,0.1)]">
-            <div className="absolute top-0 right-0 p-3 opacity-10">
-              <Wallet className="w-16 h-16 text-secondary" />
-            </div>
-            
-            <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">
-              Net Cash In Drawer
-            </p>
-            <p className="text-5xl font-black font-orbitron text-secondary tracking-tight">
-              ₹{netCashInHand.toLocaleString()}
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-2 font-medium">
-              (Total Cash Received - Expenses)
-            </p>
+        <div className="space-y-2">
+          
+          {/* 1. TOP: Total Revenue */}
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-center">
+             <div className="flex items-center justify-center gap-1.5 mb-1 text-primary">
+               <DollarSign className="w-3 h-3" />
+               <p className="text-[10px] font-bold uppercase tracking-widest">
+                 Total Revenue
+               </p>
+             </div>
+             <p className="text-2xl font-black font-orbitron text-foreground tracking-tight">
+               ₹{totalRevenue.toLocaleString()}
+             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* 2. MIDDLE: Split (Cash vs UPI) */}
+          <div className="grid grid-cols-2 gap-2">
             {/* Cash Collected */}
-            <div className="rounded-lg border border-border bg-card p-4 flex flex-col items-center justify-center gap-2 hover:border-secondary/30 transition-colors">
-              <div className="p-2 bg-secondary/10 text-secondary rounded-full">
-                <TrendingUp size={18} />
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  Cash Revenue
-                </p>
-                <p className="text-xl font-bold font-orbitron text-foreground">
-                  ₹{dailyCash.toLocaleString()}
-                </p>
-              </div>
+            <div className="rounded-md border border-border bg-card p-2 flex flex-col items-center justify-center gap-1">
+              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Wallet className="w-3 h-3" /> Cash
+              </p>
+              <p className="text-lg font-bold font-orbitron text-secondary">
+                ₹{dailyCash.toLocaleString()}
+              </p>
             </div>
 
-            {/* Expenses */}
-            <div className="rounded-lg border border-border bg-card p-4 flex flex-col items-center justify-center gap-2 hover:border-destructive/30 transition-colors">
-              <div className="p-2 bg-destructive/10 text-destructive rounded-full">
-                <Receipt size={18} />
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  Expenses
-                </p>
-                <p className="text-xl font-bold font-orbitron text-destructive">
-                  - ₹{dailyExpenses.toLocaleString()}
-                </p>
-              </div>
+            {/* UPI Collected */}
+            <div className="rounded-md border border-border bg-card p-2 flex flex-col items-center justify-center gap-1">
+              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Smartphone className="w-3 h-3" /> UPI
+              </p>
+              <p className="text-lg font-bold font-orbitron text-blue-400">
+                ₹{dailyUpi.toLocaleString()}
+              </p>
             </div>
           </div>
 
-          {/* Footer Stats: Total Revenue & UPI */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
-             <div className="text-center space-y-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Revenue</p>
-                <p className="font-bold font-orbitron text-lg text-foreground">₹{totalRevenue.toLocaleString()}</p>
-             </div>
-             <div className="text-center space-y-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center justify-center gap-1">
-                  <Smartphone className="w-3 h-3" /> UPI
+          {/* 3. LOWER MIDDLE: Net Cash In Drawer */}
+          <div className="rounded-md border border-secondary/20 bg-secondary/5 p-2 px-3 flex items-center justify-between">
+             <div className="flex flex-col">
+                <p className="text-[10px] font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                   <TrendingUp className="w-3 h-3" /> Net Cash
                 </p>
-                <p className="font-bold font-orbitron text-lg text-primary">₹{dailyUpi.toLocaleString()}</p>
+                <p className="text-[9px] text-muted-foreground">
+                  (In Drawer)
+                </p>
              </div>
+             <p className="text-xl font-black font-orbitron text-secondary">
+               ₹{netCashInHand.toLocaleString()}
+             </p>
+          </div>
+
+          {/* 4. BOTTOM: Expenses */}
+          <div className="rounded-md border border-destructive/20 bg-destructive/5 p-2 px-3 flex items-center justify-between">
+             <p className="text-[10px] font-bold text-destructive uppercase tracking-wider flex items-center gap-1.5">
+                <Receipt className="w-3 h-3" /> Expenses
+             </p>
+             <p className="text-lg font-bold font-orbitron text-destructive">
+               - ₹{dailyExpenses.toLocaleString()}
+             </p>
           </div>
 
         </div>

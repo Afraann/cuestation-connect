@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Plus, Trash2, Wallet, Smartphone, Split } from "lucide-react";
+import { Plus, Trash2, Wallet, Smartphone, Split, ArrowLeft } from "lucide-react";
 import AddItemPopup from "./AddItemPopup";
 import { cn } from "@/lib/utils";
 
@@ -55,7 +55,8 @@ const SessionManagerModal = ({
   const [sessionItems, setSessionItems] = useState<SessionItem[]>([]);
   const [itemsTotal, setItemsTotal] = useState(0);
   const [finalAmount, setFinalAmount] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "UPI" | "SPLIT">("CASH");
+  // Changed initial state to null to force selection
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "UPI" | "SPLIT" | null>(null);
   const [cashAmount, setCashAmount] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
@@ -68,6 +69,8 @@ const SessionManagerModal = ({
       }, 1000);
 
       fetchSessionItems();
+      // Reset payment method on open
+      setPaymentMethod(null);
       return () => clearInterval(interval);
     }
   }, [open, session]);
@@ -130,6 +133,11 @@ const SessionManagerModal = ({
   };
 
   const handleCheckout = async () => {
+    if (!paymentMethod) {
+      toast.error("Please select a payment method");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -198,64 +206,71 @@ const SessionManagerModal = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="font-orbitron flex justify-between items-center pr-8">
-              <span>Session Manager - {device.name}</span>
+        {/* Decreased max-width to lg and added compact padding */}
+        <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-4 gap-4">
+          <DialogHeader className="pb-2 border-b">
+            <DialogTitle className="font-orbitron flex justify-between items-center pr-8 text-lg">
+              <span>{device.name}</span>
               {rateProfileName && (
-                <span className="text-sm font-sans font-normal px-3 py-1 bg-primary/10 text-primary rounded-full border border-primary/20">
+                <span className="text-xs font-sans font-normal px-2 py-0.5 bg-primary/10 text-primary rounded-full border border-primary/20">
                   {rateProfileName}
                 </span>
               )}
             </DialogTitle>
           </DialogHeader>
 
-          {/* Replaced ScrollArea with native div for robust scrolling */}
-          <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Duration</p>
-                <p className="text-2xl font-orbitron text-primary">
+          <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+            {/* Stats Cards - Smaller padding and text */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Duration</p>
+                <p className="text-xl font-orbitron text-primary mt-1">
                   {formatDuration(duration)}
                 </p>
               </div>
-              <div className="p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Current Bill</p>
-                <p className="text-2xl font-orbitron text-secondary">
+              <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Total</p>
+                <p className="text-xl font-orbitron text-secondary mt-1">
                   ₹{calculatedAmount + itemsTotal}
                 </p>
               </div>
             </div>
 
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <Label>Items Added</Label>
+            {/* Items Section - Compact list */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label className="text-xs text-muted-foreground uppercase">Items</Label>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setShowAddItem(true)}
+                  className="h-7 text-xs"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Item
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add
                 </Button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5 max-h-[120px] overflow-y-auto">
+                {sessionItems.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic text-center py-2">No items added</p>
+                )}
                 {sessionItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex justify-between items-center p-3 bg-muted/30 rounded"
+                    className="flex justify-between items-center p-2 bg-muted/30 rounded text-sm hover:bg-muted/50 transition-colors"
                   >
-                    <span>
-                      {item.products.name} x{item.quantity}
+                    <span className="text-xs font-medium">
+                      {item.products.name} <span className="text-muted-foreground">x{item.quantity}</span>
                     </span>
                     <div className="flex items-center gap-2">
-                      <span>₹{item.price_at_order * item.quantity}</span>
+                      <span className="text-xs font-mono">₹{item.price_at_order * item.quantity}</span>
                       <Button
-                        size="sm"
+                        size="icon"
                         variant="ghost"
+                        className="h-6 w-6"
                         onClick={() => handleDeleteItem(item.id)}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-3 w-3 text-destructive" />
                       </Button>
                     </div>
                   </div>
@@ -263,87 +278,100 @@ const SessionManagerModal = ({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Override Final Amount (Optional)</Label>
+            {/* Override Amount */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground uppercase">Override Amount (Optional)</Label>
               <Input
                 type="number"
                 value={finalAmount}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => setFinalAmount(e.target.value)}
-                className="bg-muted/50"
+                className="bg-muted/50 h-9 text-sm"
                 placeholder="Enter final amount"
               />
             </div>
 
-            <div className="space-y-3">
-              <Label>Payment Method</Label>
-              <div className="grid grid-cols-3 gap-3">
+            {/* Payment Methods - Smaller buttons */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase">Payment Method</Label>
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   variant={paymentMethod === "CASH" ? "default" : "outline"}
                   className={cn(
-                    "flex flex-col items-center justify-center h-20 gap-2 transition-all",
-                    paymentMethod === "CASH" && "ring-2 ring-primary ring-offset-2"
+                    "flex flex-col items-center justify-center h-14 gap-1 transition-all",
+                    paymentMethod === "CASH" && "ring-2 ring-primary ring-offset-1"
                   )}
                   onClick={() => setPaymentMethod("CASH")}
                 >
-                  <Wallet className="h-6 w-6" />
-                  <span className="font-orbitron">CASH</span>
+                  <Wallet className="h-4 w-4" />
+                  <span className="font-orbitron text-[10px]">CASH</span>
                 </Button>
                 
                 <Button
                   variant={paymentMethod === "UPI" ? "default" : "outline"}
                   className={cn(
-                    "flex flex-col items-center justify-center h-20 gap-2 transition-all",
-                    paymentMethod === "UPI" && "ring-2 ring-primary ring-offset-2"
+                    "flex flex-col items-center justify-center h-14 gap-1 transition-all",
+                    paymentMethod === "UPI" && "ring-2 ring-primary ring-offset-1"
                   )}
                   onClick={() => setPaymentMethod("UPI")}
                 >
-                  <Smartphone className="h-6 w-6" />
-                  <span className="font-orbitron">UPI</span>
+                  <Smartphone className="h-4 w-4" />
+                  <span className="font-orbitron text-[10px]">UPI</span>
                 </Button>
 
                 <Button
                   variant={paymentMethod === "SPLIT" ? "default" : "outline"}
                   className={cn(
-                    "flex flex-col items-center justify-center h-20 gap-2 transition-all",
-                    paymentMethod === "SPLIT" && "ring-2 ring-primary ring-offset-2"
+                    "flex flex-col items-center justify-center h-14 gap-1 transition-all",
+                    paymentMethod === "SPLIT" && "ring-2 ring-primary ring-offset-1"
                   )}
                   onClick={() => setPaymentMethod("SPLIT")}
                 >
-                  <Split className="h-6 w-6" />
-                  <span className="font-orbitron">SPLIT</span>
+                  <Split className="h-4 w-4" />
+                  <span className="font-orbitron text-[10px]">SPLIT</span>
                 </Button>
               </div>
             </div>
 
             {paymentMethod === "SPLIT" && (
-              <div className="space-y-2 animate-in slide-in-from-top-2 fade-in duration-300">
-                <Label>Cash Amount</Label>
+              <div className="space-y-1.5 animate-in slide-in-from-top-2 fade-in duration-300">
+                <Label className="text-xs">Cash Portion</Label>
                 <Input
                   type="number"
                   value={cashAmount}
                   onFocus={(e) => e.target.select()}
                   onChange={(e) => setCashAmount(e.target.value)}
                   placeholder="Enter cash amount"
-                  className="bg-muted/50"
+                  className="bg-muted/50 h-9 text-sm"
                 />
-                <div className="flex justify-between text-sm text-muted-foreground px-1">
+                <div className="flex justify-between text-xs text-muted-foreground px-1">
                   <span>Total: ₹{finalAmount || 0}</span>
                   <span className="font-medium text-primary">
-                    UPI Balance: ₹{Math.max(0, (parseFloat(finalAmount) || 0) - (parseFloat(cashAmount) || 0))}
+                    UPI Bal: ₹{Math.max(0, (parseFloat(finalAmount) || 0) - (parseFloat(cashAmount) || 0))}
                   </span>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="pt-4 border-t mt-auto">
+          <div className="pt-2 mt-auto flex gap-3">
+            {/* Back to Room Button */}
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="flex-1 h-10 text-sm"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+
+            {/* Complete Session Button - Disabled if no payment method selected */}
             <Button
               onClick={handleCheckout}
-              disabled={loading}
-              className="w-full h-12 text-lg font-orbitron"
+              disabled={loading || !paymentMethod}
+              className="flex-[2] h-10 text-sm font-orbitron"
             >
-              {loading ? "Processing..." : "Complete Session"}
+              {loading ? "Processing..." : "Complete"}
             </Button>
           </div>
         </DialogContent>

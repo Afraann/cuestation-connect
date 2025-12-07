@@ -26,6 +26,7 @@ import { WeekPicker } from "@/components/admin/WeekPicker";
 import { MonthPicker } from "@/components/admin/MonthPicker";
 import { ArrowLeft, Download, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface SessionData {
   id: string;
@@ -252,37 +253,44 @@ const SessionLedger = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sessions.map((session, index) => (
-                  <TableRow key={session.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium text-muted-foreground">
-                      {(index + 1).toString().padStart(2, '0')}
-                    </TableCell>
-                    <TableCell className="font-orbitron text-primary">
-                      {session.devices?.name}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(session.start_time), "h:mm a")}
-                    </TableCell>
-                    <TableCell>
-                      {session.end_time ? format(new Date(session.end_time), "h:mm a") : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                        session.payment_method === 'CASH' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
-                        session.payment_method === 'UPI' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
-                        'bg-purple-500/10 text-purple-500 border border-purple-500/20'
-                      }`}>
-                        {session.payment_method || "N/A"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      ₹{session.calculated_amount}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      ₹{session.final_amount}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {sessions.map((session, index) => {
+                  const isMismatch = (session.final_amount || 0) !== (session.calculated_amount || 0);
+                  
+                  return (
+                    <TableRow key={session.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium text-muted-foreground">
+                        {(index + 1).toString().padStart(2, '0')}
+                      </TableCell>
+                      <TableCell className="font-orbitron text-primary">
+                        {session.devices?.name}
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(session.start_time), "h:mm a")}
+                      </TableCell>
+                      <TableCell>
+                        {session.end_time ? format(new Date(session.end_time), "h:mm a") : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                          session.payment_method === 'CASH' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                          session.payment_method === 'UPI' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                          'bg-purple-500/10 text-purple-500 border border-purple-500/20'
+                        }`}>
+                          {session.payment_method || "N/A"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        ₹{session.calculated_amount}
+                      </TableCell>
+                      <TableCell className={cn(
+                        "text-right font-medium",
+                        isMismatch && "text-destructive"
+                      )}>
+                        ₹{session.final_amount}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

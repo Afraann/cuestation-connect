@@ -2,14 +2,13 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, User, Menu, BarChart3, Receipt } from "lucide-react";
+import { LogOut, User, Menu, BarChart3, Receipt, Refrigerator } from "lucide-react";
 import DeviceCard from "@/components/DeviceCard";
 import StartSessionModal from "@/components/StartSessionModal";
 import SessionManagerModal from "@/components/SessionManagerModal";
 import DailyStatsModal from "@/components/DailyStatsModal";
-import AddExpenseModal from "@/components/AddExpenseModal"; // Import the new component
+import AddExpenseModal from "@/components/AddExpenseModal";
 import DirectSaleModal from "@/components/DirectSaleModal";
-import { ShoppingCart } from "lucide-react"; // Add icon
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +43,7 @@ const StaffDashboard = () => {
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
   const [isDailyStatsOpen, setIsDailyStatsOpen] = useState(false);
-  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false); // New state
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isDirectSaleOpen, setIsDirectSaleOpen] = useState(false);
 
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
@@ -263,10 +262,11 @@ const StaffDashboard = () => {
       {/* Direct Sale Button - Floating Bottom Right for Mobile Access */}
       <div className="fixed bottom-6 right-6 z-40">
           <Button 
-              className="h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 glow-ps5"
+              className="h-14 px-6 rounded-xl shadow-xl bg-primary hover:bg-primary/90 glow-ps5 flex gap-2 items-center"
               onClick={() => setIsDirectSaleOpen(true)}
           >
-              <ShoppingCart className="h-6 w-6 text-primary-foreground" />
+              <Refrigerator className="h-5 w-5 text-primary-foreground" />
+              <span className="font-orbitron text-primary-foreground">Juice/Snacks Counter</span>
           </Button>
       </div>
 

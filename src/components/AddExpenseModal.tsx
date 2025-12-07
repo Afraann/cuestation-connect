@@ -70,7 +70,7 @@ const AddExpenseModal = ({
           <div className="space-y-2">
             <Label>Description</Label>
             <Input
-              placeholder="e.g. Cleaning Supplies, Milk"
+              placeholder="Refreshed Stock"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -89,7 +89,7 @@ const AddExpenseModal = ({
             onClick={handleSubmit}
             disabled={loading}
           >
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save Expense"}
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Update"}
           </Button>
         </div>
       </DialogContent>

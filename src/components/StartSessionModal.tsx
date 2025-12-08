@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 interface Device {
   id: string;
   name: string;
-  type: "PS5" | "BILLIARDS";
+  type: "PS5" | "BILLIARDS" | "CARROM";
 }
 
 interface RateProfile {
@@ -69,8 +69,8 @@ const StartSessionModal = ({
 
     setRateProfiles(data || []);
     
-    // Auto-select if only one option (useful for Billiards)
-    if (device.type === "BILLIARDS" && data && data.length === 1) {
+    // Auto-select if only one option (useful for Billiards/Carrom)
+    if (device.type !== "PS5" && data && data.length === 1) {
       setSelectedRate(data[0].id);
     }
   };

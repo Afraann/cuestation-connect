@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, User, Menu, BarChart3, Receipt, Refrigerator } from "lucide-react";
+import { LogOut, User, Menu, BarChart3, Receipt, Refrigerator, RotateCcw } from "lucide-react";
 import DeviceCard from "@/components/DeviceCard";
 import StartSessionModal from "@/components/StartSessionModal";
 import SessionManagerModal from "@/components/SessionManagerModal";
@@ -17,11 +17,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Device {
   id: string;
   name: string;
-  type: "PS5" | "BILLIARDS";
+  type: "PS5" | "BILLIARDS" | "CARROM";
   status: "AVAILABLE" | "OCCUPIED";
   current_session_id: string | null;
   sort_order: number;
@@ -38,6 +39,7 @@ const StaffDashboard = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [deviceSessions, setDeviceSessions] = useState<Record<string, string>>({});
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [layout, setLayout] = useState<"default" | "rotated">("default");
   
   // Modals state
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
@@ -98,7 +100,7 @@ const StaffDashboard = () => {
       });
     }
 
-    setDevices(devicesData || []);
+    setDevices((devicesData as unknown as Device[]) || []);
     setDeviceSessions(sessionsMap);
   };
 
@@ -124,13 +126,35 @@ const StaffDashboard = () => {
     }
   };
 
+  // Helper to safely get device by name (fuzzy match)
+  const getDevice = (namePart: string) => devices.find(d => d.name.toLowerCase().includes(namePart.toLowerCase()));
+
+  // Categorized lists for Default View
   const billiards = devices.filter((d) => d.type === "BILLIARDS");
   const ps5s = devices.filter((d) => d.type === "PS5");
+  const carroms = devices.filter((d) => d.type === "CARROM");
 
   return (
-    <div className="min-h-screen bg-background p-4 relative">
+    <div className="min-h-screen bg-background p-4 relative overflow-x-hidden">
       
-      <div className="fixed top-4 right-4 z-50 flex gap-2">
+      <div className="fixed top-4 right-4 z-50 flex gap-3 items-center">
+        {/* Layout Toggle Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="rounded-full h-10 w-10 bg-background/80 backdrop-blur border-primary/20 shadow-lg hover:bg-zinc-800"
+              onClick={() => setLayout(prev => prev === "default" ? "rotated" : "default")}
+            >
+              <RotateCcw className={`h-5 w-5 transition-transform duration-500 ${layout === "rotated" ? "-rotate-90 text-primary" : ""}`} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Rotate Layout</p>
+          </TooltipContent>
+        </Tooltip>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon" className="rounded-full h-10 w-10 bg-background/80 backdrop-blur border-primary/20 shadow-lg hover:bg-zinc-800">
@@ -169,55 +193,137 @@ const StaffDashboard = () => {
         </DropdownMenu>
       </div>
 
-      <div className="max-w-5xl mx-auto space-y-4 pt-12 md:pt-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {billiards.map((device) => (
-            <DeviceCard
-              key={device.id}
-              device={device}
-              startTime={deviceSessions[device.id]}
-              onClick={() => handleDeviceClick(device)}
-              className="[&_svg]:text-white"
-            />
-          ))}
-        </div>
+      <div className="pt-16 md:pt-8 pb-20">
+        {layout === "default" ? (
+          /* ================= DEFAULT LAYOUT (Horizontal) ================= */
+          <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500">
+            {/* Billiards Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {billiards.map((device) => (
+                <DeviceCard
+                  key={device.id}
+                  device={device}
+                  startTime={deviceSessions[device.id]}
+                  onClick={() => handleDeviceClick(device)}
+                  className="[&_svg]:text-white h-full"
+                />
+              ))}
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-4">
-            {ps5s.slice(0, 2).map((device) => (
-              <DeviceCard
-                key={device.id}
-                device={device}
-                startTime={deviceSessions[device.id]}
-                onClick={() => handleDeviceClick(device)}
-                className="[&_svg]:text-white"
-              />
-            ))}
-          </div>
+            {/* Consoles Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-4">
+                {ps5s.slice(0, 2).map((device) => (
+                  <DeviceCard
+                    key={device.id}
+                    device={device}
+                    startTime={deviceSessions[device.id]}
+                    onClick={() => handleDeviceClick(device)}
+                    className="[&_svg]:text-white"
+                  />
+                ))}
+              </div>
 
-          <div className="flex flex-col justify-start">
-            {ps5s[2] && (
-              <DeviceCard
-                device={ps5s[2]}
-                startTime={deviceSessions[ps5s[2].id]}
-                onClick={() => handleDeviceClick(ps5s[2])}
-                className="[&_svg]:text-white"
-              />
-            )}
-          </div>
+              <div className="flex flex-col gap-4 justify-start">
+                {ps5s[2] && (
+                  <DeviceCard
+                    device={ps5s[2]}
+                    startTime={deviceSessions[ps5s[2].id]}
+                    onClick={() => handleDeviceClick(ps5s[2])}
+                    className="[&_svg]:text-white"
+                  />
+                )}
+                {carroms[0] && (
+                  <DeviceCard
+                    device={carroms[0]}
+                    startTime={deviceSessions[carroms[0].id]}
+                    onClick={() => handleDeviceClick(carroms[0])}
+                    className="[&_svg]:text-white"
+                  />
+                )}
+              </div>
 
-          <div className="space-y-4">
-            {ps5s.slice(3, 5).map((device) => (
-              <DeviceCard
-                key={device.id}
-                device={device}
-                startTime={deviceSessions[device.id]}
-                onClick={() => handleDeviceClick(device)}
-                className="[&_svg]:text-white"
-              />
-            ))}
+              <div className="space-y-4">
+                {ps5s.slice(3, 5).map((device) => (
+                  <DeviceCard
+                    key={device.id}
+                    device={device}
+                    startTime={deviceSessions[device.id]}
+                    onClick={() => handleDeviceClick(device)}
+                    className="[&_svg]:text-white"
+                  />
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* ================= ROTATED LAYOUT (Vertical) ================= */
+          /* Logic: Centered, Specific Stacking */
+          <div className="max-w-7xl mx-auto flex flex-row justify-center gap-8 h-full animate-in fade-in slide-in-from-right-4 duration-500 p-4 overflow-x-auto">
+            
+            {/* 1. Billiards Column (Stacked Vertically: Pool-2 Top -> Pool-1 Bottom) */}
+            <div className="flex flex-col gap-4 min-w-[280px] w-full max-w-sm">
+               <div className="bg-card/30 border border-border/30 rounded-lg p-2 text-center shrink-0">
+                <span className="text-xs font-orbitron text-muted-foreground uppercase tracking-widest text-[10px]">Billiards</span>
+              </div>
+              
+              {[getDevice("Pool-02"), getDevice("Pool-01")].map((dev) => 
+                dev && (
+                  <div key={dev.id} className="flex-1 min-h-[160px]">
+                    <DeviceCard
+                      device={dev}
+                      startTime={deviceSessions[dev.id]}
+                      onClick={() => handleDeviceClick(dev)}
+                      className="[&_svg]:text-white h-full w-full"
+                    />
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* 2. Consoles Area (2 Columns) */}
+            <div className="flex gap-4 min-w-[580px]">
+               {/* Left Stack: PS5-04 -> PS5-03 -> PS5-02 */}
+               <div className="flex flex-col gap-4 w-full max-w-sm">
+                  <div className="bg-card/30 border border-border/30 rounded-lg p-2 text-center shrink-0">
+                    <span className="text-xs font-orbitron text-muted-foreground uppercase tracking-widest text-[10px]">Row A</span>
+                  </div>
+                  {[getDevice("PS5-04"), getDevice("PS5-03"), getDevice("PS5-02")].map((dev) => 
+                    dev && (
+                      <div key={dev.id} className="flex-1 min-h-[140px]">
+                        <DeviceCard
+                          device={dev}
+                          startTime={deviceSessions[dev.id]}
+                          onClick={() => handleDeviceClick(dev)}
+                          className="[&_svg]:text-white h-full w-full"
+                        />
+                      </div>
+                    )
+                  )}
+               </div>
+
+               {/* Right Stack: PS5-05 -> Carrom-01 -> PS5-01 */}
+               <div className="flex flex-col gap-4 w-full max-w-sm">
+                  <div className="bg-card/30 border border-border/30 rounded-lg p-2 text-center shrink-0">
+                    <span className="text-xs font-orbitron text-muted-foreground uppercase tracking-widest text-[10px]">Row B</span>
+                  </div>
+                  {[getDevice("PS5-05"), getDevice("Carrom"), getDevice("PS5-01")].map((dev) => 
+                    dev && (
+                      <div key={dev.id} className="flex-1 min-h-[140px]">
+                        <DeviceCard
+                          device={dev}
+                          startTime={deviceSessions[dev.id]}
+                          onClick={() => handleDeviceClick(dev)}
+                          className="[&_svg]:text-white h-full w-full"
+                        />
+                      </div>
+                    )
+                  )}
+               </div>
+            </div>
+
+          </div>
+        )}
       </div>
 
       {selectedDevice && (

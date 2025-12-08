@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Gamepad2, Circle, Clock } from "lucide-react";
+import { Gamepad2, Circle, Clock, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Device {
   id: string;
   name: string;
-  type: "PS5" | "BILLIARDS";
+  type: "PS5" | "BILLIARDS" | "CARROM";
   status: "AVAILABLE" | "OCCUPIED";
   current_session_id: string | null;
 }
@@ -16,12 +16,13 @@ interface DeviceCardProps {
   device: Device;
   startTime?: string;
   onClick: () => void;
-  className?: string; // Added className prop
+  className?: string;
 }
 
 const DeviceCard = ({ device, startTime, onClick, className }: DeviceCardProps) => {
   const isOccupied = device.status === "OCCUPIED";
   const isPS5 = device.type === "PS5";
+  const isCarrom = device.type === "CARROM";
   const [elapsedTime, setElapsedTime] = useState("");
 
   useEffect(() => {
@@ -42,7 +43,7 @@ const DeviceCard = ({ device, startTime, onClick, className }: DeviceCardProps) 
     };
 
     updateTimer();
-    const interval = setInterval(updateTimer, 60000); // Update every minute
+    const interval = setInterval(updateTimer, 60000);
 
     return () => clearInterval(interval);
   }, [isOccupied, startTime]);
@@ -57,21 +58,25 @@ const DeviceCard = ({ device, startTime, onClick, className }: DeviceCardProps) 
           ? "bg-occupied/10 border-occupied/50"
           : isPS5
           ? "bg-card border-ps5/30 hover:border-ps5/50 glow-ps5"
+          : isCarrom
+          ? "bg-card border-amber-500/30 hover:border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
           : "bg-card border-billiard/30 hover:border-billiard/50 glow-billiard",
-        className // Apply className
+        className
       )}
     >
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-4">
           {isPS5 ? (
-            <Gamepad2 className="h-8 w-8" /> // Removed text-ps5, color will be inherited or overridden
+            <Gamepad2 className="h-8 w-8" />
+          ) : isCarrom ? (
+            <LayoutGrid className="h-8 w-8 text-amber-500" />
           ) : (
-            <Circle className="h-8 w-8" /> // Removed text-billiard, color will be inherited or overridden
+            <Circle className="h-8 w-8" />
           )}
           <div>
             <h3 className="text-xl font-orbitron leading-none">{device.name}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              {device.type === "PS5" ? "PlayStation 5" : "Billiard Table"}
+              {isPS5 ? "PlayStation 5" : isCarrom ? "Carrom Board" : "Billiard Table"}
             </p>
           </div>
         </div>

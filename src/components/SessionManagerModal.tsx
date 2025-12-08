@@ -13,10 +13,13 @@ import { toast } from "sonner";
 import { Plus, Trash2, Wallet, Smartphone, Split, ArrowLeft } from "lucide-react";
 import AddItemPopup from "./AddItemPopup";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { calculateSessionBill, PricingTier } from "@/utils/pricing";
 
 interface Device {
   id: string;
   name: string;
+  type: "PS5" | "BILLIARDS" | "CARROM";
 }
 
 interface Session {
@@ -33,6 +36,12 @@ interface SessionItem {
   products: {
     name: string;
   };
+}
+
+interface TestRateProfile {
+  id: string;
+  name: string;
+  pricing_tiers: PricingTier[]; // JSONB from DB
 }
 
 interface SessionManagerModalProps {
@@ -55,12 +64,14 @@ const SessionManagerModal = ({
   const [sessionItems, setSessionItems] = useState<SessionItem[]>([]);
   const [itemsTotal, setItemsTotal] = useState(0);
   const [finalAmount, setFinalAmount] = useState<string>("");
-  // Changed initial state to null to force selection
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "UPI" | "SPLIT" | null>(null);
   const [cashAmount, setCashAmount] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
-  const [rateProfileName, setRateProfileName] = useState<string>("");
+  
+  // New State for Test Pricing
+  const [testProfiles, setTestProfiles] = useState<TestRateProfile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string>("");
 
   useEffect(() => {
     if (open) {
@@ -69,15 +80,16 @@ const SessionManagerModal = ({
       }, 1000);
 
       fetchSessionItems();
-      // Reset payment method on open
+      fetchTestProfiles(); // Fetch from TEST table
       setPaymentMethod(null);
       return () => clearInterval(interval);
     }
   }, [open, session]);
 
+  // Recalculate bill whenever duration or selected profile changes
   useEffect(() => {
     calculateBill();
-  }, [duration, sessionItems]);
+  }, [duration, sessionItems, selectedProfileId, testProfiles]);
 
   const updateDuration = () => {
     const start = new Date(session.start_time);
@@ -105,28 +117,43 @@ const SessionManagerModal = ({
     setItemsTotal(total);
   };
 
-  const calculateBill = async () => {
-    const { data: rateProfile, error } = await supabase
-      .from("rate_profiles")
+  const fetchTestProfiles = async () => {
+    // Fetch profiles from the TEST table matching this device type
+    const { data, error } = await supabase
+      .from("rate_profiles_test")
       .select("*")
-      .eq("id", session.rate_profile_id)
-      .single();
+      .eq("device_type", device.type)
+      .order("name");
 
-    if (error || !rateProfile) return;
-
-    setRateProfileName(rateProfile.name);
-
-    let timeCharge = 0;
-
-    if (duration <= 40) {
-      timeCharge = rateProfile.base_rate_30;
-    } else if (duration <= 70) {
-      timeCharge = rateProfile.base_rate_60;
-    } else {
-      const extraMinutes = duration - 70;
-      const extra15Blocks = Math.ceil(extraMinutes / 15);
-      timeCharge = rateProfile.base_rate_60 + extra15Blocks * rateProfile.extra_15_rate;
+    if (error) {
+      console.error("Error fetching test profiles:", error);
+      return;
     }
+
+    if (data) {
+      // Cast the JSON column to our type
+      const profiles = data.map(p => ({
+        ...p,
+        pricing_tiers: p.pricing_tiers as unknown as PricingTier[]
+      }));
+      setTestProfiles(profiles);
+
+      // Default selection: Try to match the profile name if possible, otherwise pick first
+      // Since live sessions use old IDs, we can't match by ID. We default to the first available test profile.
+      if (profiles.length > 0 && !selectedProfileId) {
+        setSelectedProfileId(profiles[0].id);
+      }
+    }
+  };
+
+  const calculateBill = () => {
+    if (!selectedProfileId) return;
+
+    const currentProfile = testProfiles.find(p => p.id === selectedProfileId);
+    if (!currentProfile || !currentProfile.pricing_tiers) return;
+
+    // Use the new utility function
+    const timeCharge = calculateSessionBill(duration, currentProfile.pricing_tiers);
 
     setCalculatedAmount(timeCharge);
     setFinalAmount((timeCharge + itemsTotal).toString());
@@ -157,6 +184,8 @@ const SessionManagerModal = ({
           amount_upi: amountUpi,
           final_amount: finalAmountNum,
           calculated_amount: calculatedAmount,
+          // Note: We are NOT updating rate_profile_id to the test ID 
+          // because it would break foreign key constraints with the live table.
         })
         .eq("id", session.id);
 
@@ -206,21 +235,31 @@ const SessionManagerModal = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        {/* Decreased max-width to lg and added compact padding */}
         <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-4 gap-4">
           <DialogHeader className="pb-2 border-b">
             <DialogTitle className="font-orbitron flex justify-between items-center pr-8 text-lg">
               <span>{device.name}</span>
-              {rateProfileName && (
-                <span className="text-xs font-sans font-normal px-2 py-0.5 bg-primary/10 text-primary rounded-full border border-primary/20">
-                  {rateProfileName}
-                </span>
-              )}
+              
+              {/* Test Profile Selector (Active Rate) */}
+              <div className="w-[180px]">
+                <Select value={selectedProfileId} onValueChange={setSelectedProfileId}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select Rate" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {testProfiles.map((p) => (
+                      <SelectItem key={p.id} value={p.id} className="text-xs">
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </DialogTitle>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-            {/* Stats Cards - Smaller padding and text */}
+            {/* Stats Cards */}
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Duration</p>
@@ -236,7 +275,7 @@ const SessionManagerModal = ({
               </div>
             </div>
 
-            {/* Items Section - Compact list */}
+            {/* Items Section */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label className="text-xs text-muted-foreground uppercase">Items</Label>
@@ -291,7 +330,7 @@ const SessionManagerModal = ({
               />
             </div>
 
-            {/* Payment Methods - Smaller buttons */}
+            {/* Payment Methods */}
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground uppercase">Payment Method</Label>
               <div className="grid grid-cols-3 gap-2">
@@ -355,7 +394,6 @@ const SessionManagerModal = ({
           </div>
 
           <div className="pt-2 mt-auto flex gap-3">
-            {/* Back to Room Button */}
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
@@ -365,7 +403,6 @@ const SessionManagerModal = ({
               Back
             </Button>
 
-            {/* Complete Session Button - Disabled if no payment method selected */}
             <Button
               onClick={handleCheckout}
               disabled={loading || !paymentMethod}

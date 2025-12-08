@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, User, Menu, BarChart3, Receipt, RotateCcw, Sparkles, Gamepad, LayoutGrid, Settings, FileText, ShoppingCart, UserCircle, ChevronRight } from "lucide-react";
+import { LogOut, User, Menu, BarChart3, Receipt, RotateCcw, Refrigerator, Gamepad, LayoutGrid, Settings, FileText, ShoppingCart, UserCircle, ChevronRight } from "lucide-react";
 import DeviceCard from "@/components/DeviceCard";
 import StartSessionModal from "@/components/StartSessionModal";
 import SessionManagerModal from "@/components/SessionManagerModal";
@@ -168,7 +168,7 @@ const StaffDashboard = () => {
              <img src="/logo.jpg" className="h-full w-full object-cover opacity-90" alt="Logo" />
           </div>
           <div>
-             <h1 className="text-base font-orbitron font-bold text-foreground">CUESTATION</h1>
+             <h1 className="text-base font-orbitron font-bold text-foreground">THE CUESTATION</h1>
              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Logged in as {user?.username || 'Staff'}</p>
           </div>
         </div>
@@ -254,23 +254,9 @@ const StaffDashboard = () => {
       <div className="relative z-10 flex-1 pt-4"> {/* Increased Spacing from Header */}
         {layout === "default" ? (
           /* "Lil Bigger Width" - Increased max-w to 7xl */
-          <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pt-6">
-            
-            {/* Billiards Section */}
-            <div className="flex items-center gap-2 mb-2 px-1">
-              <LayoutGrid className="h-4 w-4 text-billiard" />
-              <h2 className="text-sm font-orbitron text-gradient-billiard tracking-wide">Billiards</h2>
-              <div className="h-px bg-gradient-to-r from-billiard/30 to-transparent flex-1" />
-            </div>
+          <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pt-6">
             <div className="grid grid-cols-2 gap-4">
               {billiards.map((device) => renderCard(device))}
-            </div>
-
-            {/* Consoles Section */}
-            <div className="flex items-center gap-2 mt-6 mb-2 px-1">
-              <Gamepad className="h-4 w-4 text-ps5" />
-              <h2 className="text-sm font-orbitron text-gradient-ps5 tracking-wide">Consoles</h2>
-              <div className="h-px bg-gradient-to-r from-ps5/30 to-transparent flex-1" />
             </div>
             
             <div className="grid grid-cols-3 gap-4">
@@ -298,8 +284,8 @@ const StaffDashboard = () => {
           <div className="flex justify-center gap-6 h-full pt-8 overflow-x-auto">
             <div className="flex flex-col gap-4 min-w-[240px]">
               <div className="text-xs text-center uppercase tracking-widest text-muted-foreground">Pool</div>
-              {getDevice("Pool-01") && renderCard(getDevice("Pool-01")!)}
               {getDevice("Pool-02") && renderCard(getDevice("Pool-02")!)}
+              {getDevice("Pool-01") && renderCard(getDevice("Pool-01")!)}
             </div>
             <div className="flex flex-col gap-4 min-w-[240px]">
               <div className="text-xs text-center uppercase tracking-widest text-muted-foreground">Row A</div>
@@ -349,11 +335,11 @@ const StaffDashboard = () => {
       
       <div className="fixed bottom-4 right-4 z-40">
           <Button 
-              className="h-10 px-4 rounded-full shadow-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 text-white flex gap-2 items-center transition-all"
+              className="h-14 px-10 shadow-lg bg-primary/10 backdrop-blur-md border border-primary/20 hover:bg-primary/20 text-primary flex gap-2 items-center transition-all"
               onClick={() => setIsDirectSaleOpen(true)}
           >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span className="font-orbitron font-bold text-[10px] tracking-wide">Quick Sale</span>
+              <Refrigerator className="h-5 w-5" />
+              <span className="font-orbitron font-bold text-[10px] tracking-wide">Juice/Snacks Counter</span>
           </Button>
       </div>
     </div>

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Plus, Trash2, Wallet, Smartphone, Split, ArrowLeft, History, Forward, Receipt, Pencil } from "lucide-react";
+import { Plus, Trash2, Wallet, Smartphone, Split, ArrowLeft, History, Forward, Pencil } from "lucide-react";
 import AddItemPopup from "./AddItemPopup";
 import AddPaymentDialog from "./AddPaymentDialog";
 import { cn } from "@/lib/utils";
@@ -114,7 +114,6 @@ const SessionManagerModal = ({
     }
   }, [open, session]);
 
-  // Recalculate bill whenever duration changes or profiles load
   useEffect(() => {
     if (rateProfiles.length > 0) {
       calculateBill();
@@ -229,9 +228,7 @@ const SessionManagerModal = ({
     }
   };
 
-  // --- SAFE BILL CALCULATION ---
   const calculateBill = async () => {
-    // 1. Fetch History Logs from REAL table
     const { data: logs } = await supabase
       .from("session_logs")
       .select("*")
@@ -240,22 +237,18 @@ const SessionManagerModal = ({
 
     let calculatedTimeCharge = 0;
 
-    // Helper: Find a profile, fallback to first available if ID is broken
     const getSafeProfile = (id: string) => {
         const match = rateProfiles.find(p => p.id === id);
         if (match) return match;
-        // Fallback Mechanism: Use the first valid profile for this device
         if (rateProfiles.length > 0) return rateProfiles[0];
         return undefined;
     };
 
-    // If no logs exist (legacy/broken session), fallback to basic calculation
     if (!logs || logs.length === 0) {
       const targetId = selectedProfileId || session.rate_profile_id;
       const currentProfile = getSafeProfile(targetId);
 
       if (currentProfile) {
-        // Fix the UI state if we had to fallback
         if (currentProfile.id !== selectedProfileId) {
             setSelectedProfileId(currentProfile.id);
         }
@@ -267,7 +260,6 @@ const SessionManagerModal = ({
         calculatedTimeCharge = calculateWeightedBill(segments);
       }
     } else {
-      // 2. Build Segments from Logs
       const segments: SessionSegment[] = [];
       const now = new Date();
 
@@ -285,7 +277,6 @@ const SessionManagerModal = ({
         }
       });
 
-      // 3. Calculate Weighted Bill
       calculatedTimeCharge = calculateWeightedBill(segments);
     }
 
@@ -329,7 +320,6 @@ const SessionManagerModal = ({
     }
     setLoading(true);
     try {
-      // Close log in REAL table
       await supabase
         .from("session_logs")
         .update({ end_time: new Date().toISOString() })
@@ -403,18 +393,18 @@ const SessionManagerModal = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-4 gap-4">
-          <DialogHeader className="pb-2 border-b">
-            <DialogTitle className="font-orbitron flex justify-between items-center pr-8 text-lg">
+        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-3 gap-3">
+          <DialogHeader className="pb-1 border-b">
+            <DialogTitle className="font-orbitron flex justify-between items-center pr-8 text-base">
               <span>{device.name}</span>
-              <div className="w-[160px]">
+              <div className="w-[140px]">
                 <Select value={selectedProfileId} onValueChange={handleProfileSwitch}>
-                  <SelectTrigger className="h-7 text-xs">
+                  <SelectTrigger className="h-7 text-[10px]">
                     <SelectValue placeholder="Select Rate" />
                   </SelectTrigger>
                   <SelectContent>
                     {rateProfiles.map((p) => (
-                      <SelectItem key={p.id} value={p.id} className="text-xs">
+                      <SelectItem key={p.id} value={p.id} className="text-[10px]">
                         {p.name}
                       </SelectItem>
                     ))}
@@ -424,50 +414,59 @@ const SessionManagerModal = ({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-2 bg-muted/50 rounded-lg border border-border/50 text-center">
-                <p className="text-[10px] text-muted-foreground uppercase">Duration</p>
-                <p className="text-lg font-orbitron text-primary">{formatDuration(duration)}</p>
+          <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+            
+            <div className="rounded-lg p-3 space-y-2 border border-white/5 bg-card/60 backdrop-blur-sm">
+              <div className="flex justify-between items-end border-b border-white/10 pb-2">
+                <div className="text-left">
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Duration</p>
+                  <p className="text-xl font-orbitron text-foreground">{formatDuration(duration)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Total</p>
+                  <p className="text-2xl font-orbitron font-bold text-primary">₹{totalBillDisplay}</p>
+                </div>
               </div>
-              <div className="p-2 bg-muted/50 rounded-lg border border-border/50 text-center">
-                <p className="text-[10px] text-muted-foreground uppercase">Total Bill</p>
-                <p className="text-lg font-orbitron text-foreground">₹{totalBillDisplay}</p>
-              </div>
-              <div className="p-2 bg-muted/50 rounded-lg border border-border/50 text-center">
-                <p className="text-[10px] text-muted-foreground uppercase">Paid</p>
-                <p className="text-lg font-orbitron text-emerald-500">₹{totalPaid}</p>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="flex flex-col p-1.5 rounded-md bg-emerald-500/5 border border-emerald-500/10">
+                  <span className="text-[8px] uppercase font-bold text-emerald-500/70">Paid</span>
+                  <span className="text-sm font-mono text-emerald-400">₹{totalPaid}</span>
+                </div>
+                <div className="flex flex-col p-1.5 rounded-md bg-red-500/5 border border-red-500/10">
+                  <span className="text-[8px] uppercase font-bold text-red-500/70">Due</span>
+                  <span className="text-sm font-mono text-red-400">₹{balanceDue}</span>
+                </div>
               </div>
             </div>
 
             {(session.transfer_amount || 0) > 0 && (
-              <div className="bg-primary/10 border border-primary/20 rounded-md p-2 flex justify-between items-center px-4">
-                <span className="text-xs font-bold text-primary uppercase flex items-center gap-2">
-                  <Forward className="h-4 w-4" /> Previous Balance
+              <div className="bg-primary/10 border border-primary/20 rounded-md p-1.5 flex justify-between items-center px-3">
+                <span className="text-[10px] font-bold text-primary uppercase flex items-center gap-1.5">
+                  <Forward className="h-3 w-3" /> Prev. Due
                 </span>
-                <span className="text-lg font-mono font-bold text-primary">₹{session.transfer_amount}</span>
+                <span className="text-sm font-mono font-bold text-primary">₹{session.transfer_amount}</span>
               </div>
             )}
 
-            {/* Payments List */}
             {totalPaid > 0 && (
               <div className="bg-emerald-500/10 rounded-md p-2 border border-emerald-500/20">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs font-bold text-emerald-500 uppercase flex items-center gap-1">
+                  <span className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-1">
                     <History className="h-3 w-3" /> Deposits
                   </span>
                 </div>
                 <div className="space-y-1">
                   {payments.map(p => (
-                    <div key={p.id} className="flex justify-between items-center text-xs text-muted-foreground bg-white/5 p-1 rounded">
+                    <div key={p.id} className="flex justify-between items-center text-[10px] text-muted-foreground bg-white/5 p-1 rounded">
                       <span>{new Date(p.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} ({p.method})</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-foreground font-bold">₹{p.amount}</span>
                         <div className="flex gap-1">
-                          <button onClick={() => handleEditPayment(p)} className="p-1 hover:text-blue-400 transition-colors">
+                          <button onClick={() => handleEditPayment(p)} className="p-0.5 hover:text-blue-400 transition-colors">
                             <Pencil className="h-3 w-3" />
                           </button>
-                          <button onClick={() => handleDeletePayment(p.id)} className="p-1 hover:text-red-400 transition-colors">
+                          <button onClick={() => handleDeletePayment(p.id)} className="p-0.5 hover:text-red-400 transition-colors">
                             <Trash2 className="h-3 w-3" />
                           </button>
                         </div>
@@ -478,45 +477,40 @@ const SessionManagerModal = ({
               </div>
             )}
 
-            <div className="flex justify-between items-center bg-card border border-primary/20 p-3 rounded-lg shadow-sm">
-                <span className="text-sm font-bold text-muted-foreground uppercase">Balance Due</span>
-                <span className="text-2xl font-black font-orbitron text-primary">₹{balanceDue}</span>
-            </div>
-
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <Label className="text-xs text-muted-foreground uppercase">Order Items</Label>
-                <div className="flex gap-2">
+                <Label className="text-[10px] text-muted-foreground uppercase">Items</Label>
+                <div className="flex gap-1.5">
                   <Button 
                     size="sm" 
                     variant="outline" 
-                    className="h-6 text-[10px] gap-1 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500"
+                    className="h-5 text-[9px] px-2 gap-1 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500"
                     onClick={() => {
                       setPaymentToEdit(null);
                       setShowAddPayment(true);
                     }}
                     disabled={balanceDue <= 0}
                   >
-                    <Plus className="h-3 w-3" /> Deposit
+                    <Plus className="h-2.5 w-2.5" /> Pay
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => setShowAddItem(true)}
-                    className="h-6 text-[10px]"
+                    className="h-5 text-[9px] px-2"
                   >
-                    <Plus className="h-3 w-3 mr-1" /> Add
+                    <Plus className="h-2.5 w-2.5 mr-1" /> Add
                   </Button>
                 </div>
               </div>
               
-              <div className="space-y-1 max-h-[100px] overflow-y-auto bg-muted/20 rounded p-1">
+              <div className="space-y-1 max-h-[80px] overflow-y-auto bg-muted/20 rounded p-1">
                 {groupedItems.map((group) => (
-                  <div key={group.product_id} className="flex justify-between items-center p-1 px-2 text-sm">
-                    <span className="text-xs">{group.product_name} <span className="font-bold text-primary">x{group.total_quantity}</span></span>
+                  <div key={group.product_id} className="flex justify-between items-center p-0.5 px-2 text-xs">
+                    <span>{group.product_name} <span className="font-bold text-primary">x{group.total_quantity}</span></span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono">₹{group.price_at_order * group.total_quantity}</span>
-                      <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => handleRemoveOneItem(group)}>
+                      <span className="font-mono text-muted-foreground">₹{group.price_at_order * group.total_quantity}</span>
+                      <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => handleRemoveOneItem(group)}>
                         <Trash2 className="h-3 w-3 text-destructive" />
                       </Button>
                     </div>
@@ -525,56 +519,52 @@ const SessionManagerModal = ({
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground uppercase">Override Total (Optional)</Label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground uppercase">Override Total (Opt)</Label>
               <Input
                 type="number"
                 value={finalAmount}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => setFinalAmount(e.target.value)}
-                className="bg-muted/50 h-9 text-sm"
-                placeholder="Enter final amount"
+                className="bg-muted/50 h-8 text-xs"
+                placeholder="Final amount"
               />
             </div>
 
             {balanceDue > 0 && (
               <div className="space-y-2 pt-2 border-t border-border/50">
-                <Label className="text-xs text-muted-foreground uppercase">Checkout Action</Label>
-                <div className="grid grid-cols-4 gap-2">
+                <Label className="text-[10px] text-muted-foreground uppercase">Checkout</Label>
+                <div className="grid grid-cols-4 gap-1.5">
                   <Button
                     variant={paymentMethod === "CASH" ? "default" : "outline"}
-                    className={cn("h-12 flex-col gap-0", paymentMethod === "CASH" && "ring-2 ring-primary")}
+                    className={cn("h-10 flex-col gap-0", paymentMethod === "CASH" && "ring-1 ring-primary")}
                     onClick={() => setPaymentMethod("CASH")}
                   >
-                    <Wallet className="h-4 w-4 mb-1" />
-                    <span className="text-[10px]">CASH</span>
+                    <span className="text-[9px]">CASH</span>
                   </Button>
                   <Button
                     variant={paymentMethod === "UPI" ? "default" : "outline"}
-                    className={cn("h-12 flex-col gap-0", paymentMethod === "UPI" && "ring-2 ring-primary")}
+                    className={cn("h-10 flex-col gap-0", paymentMethod === "UPI" && "ring-1 ring-primary")}
                     onClick={() => setPaymentMethod("UPI")}
                   >
-                    <Smartphone className="h-4 w-4 mb-1" />
-                    <span className="text-[10px]">UPI</span>
+                    <span className="text-[9px]">UPI</span>
                   </Button>
                   <Button
                     variant={paymentMethod === "SPLIT" ? "default" : "outline"}
-                    className={cn("h-12 flex-col gap-0", paymentMethod === "SPLIT" && "ring-2 ring-primary")}
+                    className={cn("h-10 flex-col gap-0", paymentMethod === "SPLIT" && "ring-1 ring-primary")}
                     onClick={() => setPaymentMethod("SPLIT")}
                   >
-                    <Split className="h-4 w-4 mb-1" />
-                    <span className="text-[10px]">SPLIT</span>
+                    <span className="text-[9px]">SPLIT</span>
                   </Button>
                   <Button
                     variant={paymentMethod === "CARRY_FORWARD" ? "default" : "outline"}
                     className={cn(
-                      "h-12 flex-col gap-0 border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-500", 
-                      paymentMethod === "CARRY_FORWARD" && "bg-amber-500 hover:bg-amber-600 ring-2 ring-amber-500 text-white"
+                      "h-10 flex-col gap-0 border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-500", 
+                      paymentMethod === "CARRY_FORWARD" && "bg-amber-500 hover:bg-amber-600 text-white"
                     )}
                     onClick={() => setPaymentMethod("CARRY_FORWARD")}
                   >
-                    <Forward className="h-4 w-4 mb-1" />
-                    <span className="text-[9px]">TRANSFER</span>
+                    <span className="text-[8px]">LATER</span>
                   </Button>
                 </div>
 
@@ -586,9 +576,9 @@ const SessionManagerModal = ({
                         value={cashAmount}
                         onChange={(e) => setCashAmount(e.target.value)}
                         placeholder="Cash Amount"
-                        className="h-9 text-sm"
+                        className="h-8 text-xs"
                       />
-                      <div className="text-xs whitespace-nowrap">
+                      <div className="text-[10px] whitespace-nowrap">
                         UPI: <span className="font-bold text-primary">₹{Math.max(0, balanceDue - (parseFloat(cashAmount) || 0))}</span>
                       </div>
                     </div>
@@ -598,16 +588,16 @@ const SessionManagerModal = ({
             )}
           </div>
 
-          <div className="pt-2 mt-auto flex gap-3">
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-10 text-sm">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back
+          <div className="pt-1 mt-auto flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-9 text-xs">
+              Back
             </Button>
             <Button
               onClick={handleCheckout}
               disabled={loading || (balanceDue > 0 && !paymentMethod)}
-              className="flex-[2] h-10 text-sm font-orbitron"
+              className="flex-[2] h-9 text-xs font-orbitron"
             >
-              {loading ? "Processing..." : paymentMethod === "CARRY_FORWARD" ? "Transfer Bill" : "Complete Session"}
+              {loading ? "..." : paymentMethod === "CARRY_FORWARD" ? "Transfer Bill" : "Complete"}
             </Button>
           </div>
         </DialogContent>

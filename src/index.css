@@ -2,28 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 222 47% 5%;
+    --background: 222 47% 4%; /* Slightly darker for better contrast */
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 8%;
+    --card: 222 47% 6%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 8%;
+    --popover: 222 47% 6%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 210 100% 60%;
     --primary-foreground: 222 47% 5%;
 
-    --secondary: 142 76% 48%;
-    --secondary-foreground: 222 47% 5%;
+    --secondary: 150 100% 38%; /* Sharper Green */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217 33% 17%;
+    --muted: 217 33% 12%;
     --muted-foreground: 215 20% 65%;
 
     --accent: 210 100% 60%;
@@ -32,29 +28,21 @@ All colors MUST be HSL.
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
+    --border: 217 33% 15%;
+    --input: 217 33% 15%;
     --ring: 210 100% 60%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem; /* Increased radius for modern feel */
 
-    --sidebar-background: 222 47% 6%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 210 100% 60%;
-    --sidebar-primary-foreground: 222 47% 5%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 210 100% 60%;
-
+    /* Custom Brand Colors */
     --ps5-accent: 210 100% 60%;
-    --billiard-accent: 142 76% 48%;
+    --billiard-accent: 150 100% 38%;
     --occupied: 0 84% 60%;
     --available: 210 40% 98%;
   }
 
   .dark {
-    --background: 222 47% 5%;
+    --background: 222 47% 4%;
     --foreground: 210 40% 98%;
   }
 }
@@ -63,38 +51,54 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
+    background-image: 
+      radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, hsl(var(--secondary) / 0.03) 0%, transparent 40%);
+    background-attachment: fixed;
   }
-
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Orbitron', sans-serif;
-    font-weight: 700;
+    letter-spacing: 0.025em;
   }
 }
 
 @layer utilities {
   .text-gradient-ps5 {
-    @apply bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent;
   }
   
   .text-gradient-billiard {
-    @apply bg-gradient-to-r from-secondary to-green-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500 bg-clip-text text-transparent;
+  }
+
+  /* Glassmorphism Utility */
+  .glass {
+    @apply bg-background/60 backdrop-blur-md border border-white/5 shadow-xl;
+  }
+
+  .glass-card {
+    @apply bg-card/40 backdrop-blur-sm border border-white/5 transition-all duration-300;
   }
 
   .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
+  /* Refined Glows */
   .glow-ps5 {
-    box-shadow: 0 0 20px hsl(var(--ps5-accent) / 0.5);
+    box-shadow: 0 0 40px -10px hsl(var(--ps5-accent) / 0.2);
+  }
+  .glow-ps5:hover {
+    box-shadow: 0 0 60px -15px hsl(var(--ps5-accent) / 0.4);
   }
 
   .glow-billiard {
-    box-shadow: 0 0 20px hsl(var(--billiard-accent) / 0.5);
+    box-shadow: 0 0 40px -10px hsl(var(--billiard-accent) / 0.15);
+  }
+  .glow-billiard:hover {
+    box-shadow: 0 0 60px -15px hsl(var(--billiard-accent) / 0.3);
   }
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap');

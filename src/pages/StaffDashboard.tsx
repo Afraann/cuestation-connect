@@ -20,6 +20,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 
+// ... (Interfaces remain same)
 interface Device {
   id: string;
   name: string;
@@ -60,6 +61,7 @@ const StaffDashboard = () => {
 
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
 
+  // ... (Effects and fetch logic remain same)
   useEffect(() => {
     fetchData();
     const channel = supabase
@@ -131,7 +133,6 @@ const StaffDashboard = () => {
   const ps5s = devices.filter((d) => d.type === "PS5");
   const carroms = devices.filter((d) => d.type === "CARROM");
 
-  // STRICT Logic for 1P, 2P, 3P, 4P
   const getPlayerCountBadge = (deviceId: string) => {
     const name = deviceSessions[deviceId]?.profileName || "";
     const lowerName = name.toLowerCase();
@@ -168,7 +169,7 @@ const StaffDashboard = () => {
              <img src="/logo.jpg" className="h-full w-full object-cover opacity-90" alt="Logo" />
           </div>
           <div>
-             <h1 className="text-base font-orbitron font-bold text-foreground">CUESTATION</h1>
+             <h1 className="text-base font-orbitron font-bold text-foreground">THE CUESTATION</h1>
              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Logged in as {user?.username || 'Staff'}</p>
           </div>
         </div>
@@ -223,31 +224,29 @@ const StaffDashboard = () => {
         </div>
       </div>
 
-      <div className="relative z-10 flex-1 pt-4"> {/* Increased Spacing from Header */}
+      <div className="relative z-10 flex-1 pt-4">
         {layout === "default" ? (
-          /* "Lil Bigger Width" - Increased max-w to 7xl */
-          <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pt-6">
-
-            {/* Wider Gap for bigger feeling */}
+          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pt-6">
+            
             <div className="grid grid-cols-2 gap-4">
               {billiards.map((device) => renderCard(device))}
             </div>
 
             
             <div className="grid grid-cols-3 gap-4">
-               {/* Left Column: PS5 1 & 2 */}
+               {/* Left Column */}
                <div className="space-y-4">
                   {ps5s[0] && renderCard(ps5s[0], "[&_svg]:text-white")}
                   {ps5s[1] && renderCard(ps5s[1], "[&_svg]:text-white")}
                </div>
                
-               {/* Middle Column: PS5 3 & Carrom */}
+               {/* Middle Column */}
                <div className="space-y-4">
                   {ps5s[2] && renderCard(ps5s[2], "[&_svg]:text-white")}
                   {carroms[0] && renderCard(carroms[0], "[&_svg]:text-white")}
                </div>
 
-               {/* Right Column: PS5 4 & 5 */}
+               {/* Right Column */}
                <div className="space-y-4">
                   {ps5s[3] && renderCard(ps5s[3], "[&_svg]:text-white")}
                   {ps5s[4] && renderCard(ps5s[4], "[&_svg]:text-white")}
@@ -308,13 +307,13 @@ const StaffDashboard = () => {
       <AddExpenseModal open={isExpenseModalOpen} onOpenChange={setIsExpenseModalOpen} />
       <DirectSaleModal open={isDirectSaleOpen} onOpenChange={setIsDirectSaleOpen} />
       
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-4 right-4 z-40">
           <Button 
-              className="h-12 px-6 rounded-full shadow-lg bg-gradient-to-r from-primary to-blue-600 hover:scale-105 transition-transform duration-300 border border-white/10 flex gap-2 items-center"
+              className="h-10 px-4 rounded-full shadow-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 text-white flex gap-2 items-center transition-all"
               onClick={() => setIsDirectSaleOpen(true)}
           >
-              <Sparkles className="h-4 w-4 text-white" />
-              <span className="font-orbitron font-bold text-white text-xs">Quick Sale</span>
+              <Sparkles className="h-3.5 w-3.5" />
+              <span className="font-orbitron font-bold text-[10px] tracking-wide">Quick Sale</span>
           </Button>
       </div>
     </div>

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Plus, Trash2, Wallet, Smartphone, Split, ArrowLeft, History, Forward, Pencil } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, History, Pencil, ShoppingCart, Coffee, X } from "lucide-react";
 import AddItemPopup from "./AddItemPopup";
 import AddPaymentDialog from "./AddPaymentDialog";
 import { cn } from "@/lib/utils";
@@ -393,212 +393,207 @@ const SessionManagerModal = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-3 gap-3">
-          <DialogHeader className="pb-1 border-b">
-            <DialogTitle className="font-orbitron flex justify-between items-center pr-8 text-base">
-              <span>{device.name}</span>
-              <div className="w-[140px]">
-                <Select value={selectedProfileId} onValueChange={handleProfileSwitch}>
-                  <SelectTrigger className="h-7 text-[10px]">
-                    <SelectValue placeholder="Select Rate" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rateProfiles.map((p) => (
-                      <SelectItem key={p.id} value={p.id} className="text-[10px]">
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+        <DialogContent className="max-w-fit bg-transparent border-0 p-0 shadow-none sm:max-w-fit outline-none [&>button]:hidden">
+          
+          <div className="flex flex-col md:flex-row gap-4 items-start max-h-[90vh]">
             
-            <div className="rounded-lg p-3 space-y-2 border border-white/5 bg-card/60 backdrop-blur-sm">
-              <div className="flex justify-between items-end border-b border-white/10 pb-2">
-                <div className="text-left">
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Duration</p>
-                  <p className="text-xl font-orbitron text-foreground">{formatDuration(duration)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Total</p>
-                  <p className="text-2xl font-orbitron font-bold text-primary">₹{totalBillDisplay}</p>
-                </div>
-              </div>
+            {/* --- LEFT PANEL: MAIN SESSION CONTROL --- */}
+            <div className="w-full md:w-[400px] bg-[#0f1115] border border-white/10 rounded-xl shadow-2xl flex flex-col overflow-hidden max-h-full">
+              <DialogHeader className="p-4 border-b border-white/5 bg-white/5">
+                <DialogTitle className="font-orbitron flex justify-between items-center text-lg">
+                  <span>{device.name}</span>
+                  <div className="w-[140px]">
+                    <Select value={selectedProfileId} onValueChange={handleProfileSwitch}>
+                      <SelectTrigger className="h-8 text-xs bg-black/40 border-white/10 text-muted-foreground hover:text-white transition-colors">
+                        <SelectValue placeholder="Select Rate" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#0f1115] border-white/10">
+                        {rateProfiles.map((p) => (
+                          <SelectItem key={p.id} value={p.id} className="text-xs text-muted-foreground focus:bg-white/10 focus:text-white">
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </DialogTitle>
+              </DialogHeader>
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="flex flex-col p-1.5 rounded-md bg-emerald-500/5 border border-emerald-500/10">
-                  <span className="text-[8px] uppercase font-bold text-emerald-500/70">Paid</span>
-                  <span className="text-sm font-mono text-emerald-400">₹{totalPaid}</span>
-                </div>
-                <div className="flex flex-col p-1.5 rounded-md bg-red-500/5 border border-red-500/10">
-                  <span className="text-[8px] uppercase font-bold text-red-500/70">Due</span>
-                  <span className="text-sm font-mono text-red-400">₹{balanceDue}</span>
-                </div>
-              </div>
-            </div>
-
-            {(session.transfer_amount || 0) > 0 && (
-              <div className="bg-primary/10 border border-primary/20 rounded-md p-1.5 flex justify-between items-center px-3">
-                <span className="text-[10px] font-bold text-primary uppercase flex items-center gap-1.5">
-                  <Forward className="h-3 w-3" /> Prev. Due
-                </span>
-                <span className="text-sm font-mono font-bold text-primary">₹{session.transfer_amount}</span>
-              </div>
-            )}
-
-            {totalPaid > 0 && (
-              <div className="bg-emerald-500/10 rounded-md p-2 border border-emerald-500/20">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-1">
-                    <History className="h-3 w-3" /> Deposits
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  {payments.map(p => (
-                    <div key={p.id} className="flex justify-between items-center text-[10px] text-muted-foreground bg-white/5 p-1 rounded">
-                      <span>{new Date(p.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} ({p.method})</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-foreground font-bold">₹{p.amount}</span>
-                        <div className="flex gap-1">
-                          <button onClick={() => handleEditPayment(p)} className="p-0.5 hover:text-blue-400 transition-colors">
-                            <Pencil className="h-3 w-3" />
-                          </button>
-                          <button onClick={() => handleDeletePayment(p.id)} className="p-0.5 hover:text-red-400 transition-colors">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                
+                {/* Receipt Card */}
+                <div className="rounded-lg p-4 space-y-3 border border-white/5 bg-black/20 backdrop-blur-md">
+                  <div className="flex justify-between items-end border-b border-white/10 pb-3">
+                    <div className="text-left">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 font-medium">Session Time</p>
+                      <p className="text-xl font-orbitron text-white">{formatDuration(duration)}</p>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <Label className="text-[10px] text-muted-foreground uppercase">Items</Label>
-                <div className="flex gap-1.5">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="h-5 text-[9px] px-2 gap-1 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500"
-                    onClick={() => {
-                      setPaymentToEdit(null);
-                      setShowAddPayment(true);
-                    }}
-                    disabled={balanceDue <= 0}
-                  >
-                    <Plus className="h-2.5 w-2.5" /> Pay
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowAddItem(true)}
-                    className="h-5 text-[9px] px-2"
-                  >
-                    <Plus className="h-2.5 w-2.5 mr-1" /> Add
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-1 max-h-[80px] overflow-y-auto bg-muted/20 rounded p-1">
-                {groupedItems.map((group) => (
-                  <div key={group.product_id} className="flex justify-between items-center p-0.5 px-2 text-xs">
-                    <span>{group.product_name} <span className="font-bold text-primary">x{group.total_quantity}</span></span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-muted-foreground">₹{group.price_at_order * group.total_quantity}</span>
-                      <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => handleRemoveOneItem(group)}>
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </Button>
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 font-medium">Total Bill</p>
+                      <p className="text-3xl font-orbitron font-bold text-primary">₹{totalBillDisplay}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            <div className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground uppercase">Override Total (Opt)</Label>
-              <Input
-                type="number"
-                value={finalAmount}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => setFinalAmount(e.target.value)}
-                className="bg-muted/50 h-8 text-xs"
-                placeholder="Final amount"
-              />
-            </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col p-2.5 rounded-md bg-emerald-500/5 border border-emerald-500/10">
+                      <span className="text-[9px] uppercase font-bold text-emerald-500/70 tracking-wider">Paid / Advance</span>
+                      <span className="text-lg font-mono text-emerald-400">₹{totalPaid}</span>
+                    </div>
+                    
+                    {/* Split Due Box */}
+                    <div className="flex flex-col p-2.5 rounded-md bg-red-500/5 border border-red-500/10 justify-between">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] uppercase font-bold text-red-500/70 tracking-wider">Net Due</span>
+                        <span className="text-lg font-mono text-red-400 font-bold">₹{balanceDue}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 mt-1 border-t border-red-500/10 text-[9px] text-red-300/50">
+                        <span className="flex items-center gap-1">Time: <span className="font-mono">₹{calculatedAmount}</span></span>
+                        <span className="flex items-center gap-1">Items: <span className="font-mono">₹{itemsTotal}</span></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-            {balanceDue > 0 && (
-              <div className="space-y-2 pt-2 border-t border-border/50">
-                <Label className="text-[10px] text-muted-foreground uppercase">Checkout</Label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  <Button
-                    variant={paymentMethod === "CASH" ? "default" : "outline"}
-                    className={cn("h-10 flex-col gap-0", paymentMethod === "CASH" && "ring-1 ring-primary")}
-                    onClick={() => setPaymentMethod("CASH")}
+                {/* Manual Override & Deposit */}
+                <div className="flex gap-3 items-end">
+                  <div className="space-y-1.5 flex-1">
+                    <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Override Total</Label>
+                    <Input
+                      type="number"
+                      value={finalAmount}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setFinalAmount(e.target.value)}
+                      className="bg-black/20 border-white/10 h-10 text-sm focus-visible:ring-primary/50"
+                      placeholder="Enter amount"
+                    />
+                  </div>
+                  <Button 
+                      variant="outline" 
+                      className="h-10 px-4 text-[10px] gap-2 bg-emerald-500/5 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 transition-colors uppercase font-bold tracking-wider"
+                      onClick={() => {
+                        setPaymentToEdit(null);
+                        setShowAddPayment(true);
+                      }}
                   >
-                    <span className="text-[9px]">CASH</span>
-                  </Button>
-                  <Button
-                    variant={paymentMethod === "UPI" ? "default" : "outline"}
-                    className={cn("h-10 flex-col gap-0", paymentMethod === "UPI" && "ring-1 ring-primary")}
-                    onClick={() => setPaymentMethod("UPI")}
-                  >
-                    <span className="text-[9px]">UPI</span>
-                  </Button>
-                  <Button
-                    variant={paymentMethod === "SPLIT" ? "default" : "outline"}
-                    className={cn("h-10 flex-col gap-0", paymentMethod === "SPLIT" && "ring-1 ring-primary")}
-                    onClick={() => setPaymentMethod("SPLIT")}
-                  >
-                    <span className="text-[9px]">SPLIT</span>
-                  </Button>
-                  <Button
-                    variant={paymentMethod === "CARRY_FORWARD" ? "default" : "outline"}
-                    className={cn(
-                      "h-10 flex-col gap-0 border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-500", 
-                      paymentMethod === "CARRY_FORWARD" && "bg-amber-500 hover:bg-amber-600 text-white"
-                    )}
-                    onClick={() => setPaymentMethod("CARRY_FORWARD")}
-                  >
-                    <span className="text-[8px]">LATER</span>
+                      <Plus className="h-3 w-3" /> Advance Payment
                   </Button>
                 </div>
 
-                {paymentMethod === "SPLIT" && (
-                  <div className="space-y-1 animate-in slide-in-from-top-2">
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        type="number"
-                        value={cashAmount}
-                        onChange={(e) => setCashAmount(e.target.value)}
-                        placeholder="Cash Amount"
-                        className="h-8 text-xs"
-                      />
-                      <div className="text-[10px] whitespace-nowrap">
-                        UPI: <span className="font-bold text-primary">₹{Math.max(0, balanceDue - (parseFloat(cashAmount) || 0))}</span>
-                      </div>
+                {/* Checkout Actions */}
+                {balanceDue > 0 && (
+                  <div className="space-y-3 pt-3 border-t border-white/10">
+                    <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Select Payment Method</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {["CASH", "UPI", "SPLIT", "CARRY_FORWARD"].map((method) => (
+                        <Button
+                          key={method}
+                          variant="outline"
+                          className={cn(
+                            "h-10 text-[10px] font-bold tracking-wider uppercase transition-all duration-300",
+                            paymentMethod === method 
+                              ? "bg-primary/20 border-primary text-primary shadow-[0_0_15px_-3px_hsl(var(--primary)/0.3)]" 
+                              : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:text-white"
+                          )}
+                          onClick={() => setPaymentMethod(method as any)}
+                        >
+                          {method === "CARRY_FORWARD" ? "TRANSFER" : method}
+                        </Button>
+                      ))}
                     </div>
+
+                    {paymentMethod === "SPLIT" && (
+                      <div className="animate-in slide-in-from-top-2 pt-1">
+                        <div className="flex gap-3 items-center bg-black/40 p-2.5 rounded-lg border border-white/10">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase whitespace-nowrap">Cash Received:</span>
+                          <Input
+                            type="number"
+                            value={cashAmount}
+                            onChange={(e) => setCashAmount(e.target.value)}
+                            placeholder="0"
+                            className="h-7 w-24 text-sm bg-transparent border-0 border-b border-white/20 rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-center font-mono"
+                          />
+                          <div className="flex-1 text-right">
+                            <span className="text-[10px] text-muted-foreground mr-2">UPI Balance:</span>
+                            <span className="font-bold text-primary font-mono text-sm">₹{Math.max(0, balanceDue - (parseFloat(cashAmount) || 0))}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
 
-          <div className="pt-1 mt-auto flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-9 text-xs">
-              Back
-            </Button>
-            <Button
-              onClick={handleCheckout}
-              disabled={loading || (balanceDue > 0 && !paymentMethod)}
-              className="flex-[2] h-9 text-xs font-orbitron"
-            >
-              {loading ? "..." : paymentMethod === "CARRY_FORWARD" ? "Transfer Bill" : "Complete"}
-            </Button>
+              {/* Footer Actions */}
+              <div className="p-4 border-t border-white/10 flex gap-3 bg-black/20">
+                <Button 
+                  variant="outline" 
+                  onClick={() => onOpenChange(false)} 
+                  className="flex-1 h-11 text-xs border-white/10 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCheckout}
+                  disabled={loading || (balanceDue > 0 && !paymentMethod)}
+                  className="flex-[2] h-11 text-xs font-orbitron font-bold tracking-wide bg-white/10 border border-white/10 hover:bg-white/20 text-white shadow-lg disabled:opacity-50"
+                >
+                  {loading ? "Processing..." : paymentMethod === "CARRY_FORWARD" ? "Transfer to Tab" : "Complete & Close"}
+                </Button>
+              </div>
+            </div>
+
+            {/* --- RIGHT PANEL: ITEMS MANAGER --- */}
+            <div className="w-full md:w-[300px] flex flex-col gap-4 animate-in fade-in slide-in-from-left-4 duration-300">
+                {groupedItems.length > 0 ? (
+                    <div className="bg-[#0f1115] border border-white/10 rounded-xl shadow-2xl flex flex-col overflow-hidden h-full max-h-[500px]">
+                        <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
+                            <span className="text-xs font-bold font-orbitron uppercase tracking-wider text-muted-foreground">Order Items <span className="text-primary ml-1">({groupedItems.reduce((a,b)=>a+b.total_quantity,0)})</span></span>
+                            <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => setShowAddItem(true)}
+                                className="h-7 w-7 p-0 rounded-full bg-primary/10 text-primary hover:bg-primary/20"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                            {groupedItems.map((group) => (
+                                <div key={group.product_id} className="flex justify-between items-center p-3 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-colors group">
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-medium text-gray-200">{group.product_name}</span>
+                                        <span className="text-[10px] text-muted-foreground font-mono">x{group.total_quantity} @ ₹{group.price_at_order}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm font-mono font-bold text-gray-300">₹{group.price_at_order * group.total_quantity}</span>
+                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-full opacity-0 group-hover:opacity-100 transition-all" onClick={() => handleRemoveOneItem(group)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-4 bg-black/20 border-t border-white/10 flex justify-between items-center">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Subtotal</span>
+                            <span className="text-lg font-orbitron font-bold text-primary">₹{itemsTotal}</span>
+                        </div>
+                    </div>
+                ) : (
+                    <div 
+                        className="bg-[#0f1115] border border-dashed border-white/10 rounded-xl shadow-xl flex flex-col items-center justify-center p-6 gap-4 cursor-pointer hover:bg-white/5 hover:border-white/20 transition-all group h-[140px]"
+                        onClick={() => setShowAddItem(true)}
+                    >
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-white/5 to-white/10 flex items-center justify-center group-hover:scale-110 transition-transform border border-white/10 shadow-inner">
+                            <Coffee className="h-5 w-5 text-gray-400 group-hover:text-primary transition-colors" />
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm font-bold font-orbitron text-gray-300 group-hover:text-white transition-colors">Add Snacks</p>
+                            <p className="text-[10px] text-muted-foreground mt-1 tracking-wide">Tap to open menu</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
           </div>
         </DialogContent>
       </Dialog>

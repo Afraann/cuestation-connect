@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Gamepad2, Receipt, Infinity, Hourglass, Clock } from "lucide-react";
+import { Gamepad2, Receipt, Infinity, Hourglass, Target, LayoutGrid, Clock, Check, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Device {
@@ -58,7 +58,7 @@ const StartSessionModal = ({
   const [pendingBills, setPendingBills] = useState<PendingBill[]>([]);
   const [selectedBillId, setSelectedBillId] = useState<string>("none");
   
-  // NEW: Time Selection State
+  // Time Selection State
   const [timeMode, setTimeMode] = useState<"OPEN" | "FIXED">("OPEN");
   const [fixedDuration, setFixedDuration] = useState<number | null>(null);
   const [customDuration, setCustomDuration] = useState<string>("");
@@ -71,7 +71,6 @@ const StartSessionModal = ({
       fetchPendingBills();
       setSelectedRate("");
       setSelectedBillId("none");
-      // Reset Time Mode
       setTimeMode("OPEN");
       setFixedDuration(null);
       setCustomDuration("");
@@ -84,10 +83,13 @@ const StartSessionModal = ({
       .select("*")
       .eq("device_type", device.type)
       .order("name");
-    setRateProfiles(data || []);
     
-    if (device.type !== "PS5" && data && data.length === 1) {
-      setSelectedRate(data[0].id);
+    const profiles = data || [];
+    setRateProfiles(profiles);
+    
+    // Auto-select if there's only one profile (Common for Pool/Carrom)
+    if (profiles.length === 1) {
+      setSelectedRate(profiles[0].id);
     }
   };
 
@@ -118,7 +120,6 @@ const StartSessionModal = ({
       return;
     }
 
-    // Validate Fixed Duration
     let finalDuration = null;
     if (timeMode === "FIXED") {
       if (customDuration) {
@@ -147,7 +148,6 @@ const StartSessionModal = ({
         }
       }
 
-      // 1. Create Session
       const { data: session, error: sessionError } = await supabase
         .from("sessions")
         .insert({
@@ -156,21 +156,19 @@ const StartSessionModal = ({
           status: "ACTIVE",
           transfer_session_id: transferSessionId,
           transfer_amount: transferAmount,
-          planned_duration: finalDuration, // NEW: Save the duration
+          planned_duration: finalDuration,
         })
         .select()
         .single();
 
       if (sessionError) throw sessionError;
 
-      // 2. Create Initial Log Entry
       await supabase.from("session_logs").insert({
         session_id: session.id,
         rate_profile_id: selectedRate,
         start_time: new Date().toISOString(),
       });
 
-      // 3. Update Device
       const { error: deviceError } = await supabase
         .from("devices")
         .update({
@@ -181,7 +179,7 @@ const StartSessionModal = ({
 
       if (deviceError) throw deviceError;
 
-      toast.success("Session started successfully!");
+      toast.success("Session started");
       onSessionStarted();
     } catch (error) {
       console.error("Error starting session:", error);
@@ -191,90 +189,127 @@ const StartSessionModal = ({
     }
   };
 
-  const getIconColor = (name: string) => {
-    const n = name.toLowerCase();
-    if (n.includes("1")) return "text-red-500";
-    if (n.includes("2")) return "text-blue-500";
-    if (n.includes("3")) return "text-yellow-500";
-    if (n.includes("4")) return "text-purple-500";
-    return "text-primary";
+  const getIcon = () => {
+    if (device.type === "PS5") return <Gamepad2 className="h-5 w-5 text-ps5" />;
+    if (device.type === "BILLIARDS") return <Target className="h-5 w-5 text-billiard" />;
+    return <LayoutGrid className="h-5 w-5 text-amber-500" />;
   };
 
   // Helper for Fixed Time Buttons
   const DurationBtn = ({ mins, label }: { mins: number; label: string }) => (
-    <Button
-      variant={fixedDuration === mins && !customDuration ? "default" : "outline"}
-      className={cn("h-10 text-xs", fixedDuration === mins && !customDuration && "ring-2 ring-primary")}
+    <button
+      className={cn(
+        "h-9 text-xs rounded-md border transition-all duration-200 font-medium",
+        fixedDuration === mins && !customDuration
+          ? "bg-primary/20 text-primary border-primary shadow-[0_0_15px_-5px_hsl(var(--primary))]"
+          : "bg-white/5 border-white/10 hover:bg-white/10 text-muted-foreground hover:text-white"
+      )}
       onClick={() => {
         setFixedDuration(mins);
         setCustomDuration("");
       }}
     >
       {label}
-    </Button>
+    </button>
   );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md min-h-[500px] flex flex-col gap-6">
-        <DialogHeader>
-          <DialogTitle className="font-orbitron text-2xl text-center">
-            Start Session
-            <span className="block text-muted-foreground text-lg mt-2 font-sans font-normal">{device.name}</span>
-          </DialogTitle>
-        </DialogHeader>
+      {/* Hide default close button to avoid overlap */}
+      <DialogContent className="sm:max-w-md bg-[#0f1115] border border-white/10 p-0 gap-0 overflow-hidden shadow-2xl [&>button]:hidden">
+        
+        {/* Header */}
+        <div className="p-6 pb-4 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent">
+          <DialogHeader className="flex flex-row items-center gap-3 space-y-0 text-left">
+            <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shadow-inner">
+              {getIcon()}
+            </div>
+            <div>
+              <DialogTitle className="font-orbitron text-lg tracking-wide text-foreground">
+                {device.name}
+              </DialogTitle>
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-0.5">
+                Start New Session
+              </p>
+            </div>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-6 flex-1 overflow-y-auto pr-1">
+        <div className="p-6 space-y-6">
           {/* 1. Rate Selection */}
-          {device.type === "PS5" ? (
-            <div className="grid grid-cols-2 gap-4">
-              {rateProfiles.map((profile) => (
-                <Button
-                  key={profile.id}
-                  variant={selectedRate === profile.id ? "default" : "outline"}
-                  className={cn(
-                    "h-24 flex flex-col gap-2 hover:scale-105 transition-all duration-200",
-                    selectedRate === profile.id ? "border-primary ring-2 ring-primary ring-offset-2" : "border-2"
-                  )}
-                  onClick={() => setSelectedRate(profile.id)}
-                >
-                  <Gamepad2 className={cn("h-8 w-8", getIconColor(profile.name))} />
-                  <span className="font-orbitron text-xs">{profile.name}</span>
-                </Button>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <Label className="text-base">Select Rate Profile</Label>
-              <Select value={selectedRate} onValueChange={setSelectedRate}>
-                <SelectTrigger className="h-12 text-lg">
-                  <SelectValue placeholder="Choose rate type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {rateProfiles.map((profile) => (
-                    <SelectItem key={profile.id} value={profile.id} className="text-base py-3">
-                      {profile.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="space-y-3">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Select Rate</Label>
+            
+            {/* Logic: If only 1 profile (Pool/Carrom), show static card. Else show grid. */}
+            {rateProfiles.length === 1 ? (
+              <div className="flex items-center justify-between p-3 rounded-xl border border-primary/30 bg-primary/10 shadow-[0_0_20px_-10px_hsl(var(--primary)/0.3)]">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <span className="text-sm font-orbitron font-bold text-foreground">
+                    {rateProfiles[0].name}
+                  </span>
+                </div>
+                <span className="text-[10px] uppercase font-bold text-primary tracking-wider bg-primary/20 px-2 py-1 rounded">Active</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {rateProfiles.map((profile) => {
+                  const isSelected = selectedRate === profile.id;
+                  return (
+                    <button
+                      key={profile.id}
+                      onClick={() => setSelectedRate(profile.id)}
+                      className={cn(
+                        "relative flex flex-col items-start p-3 h-20 rounded-xl border transition-all duration-300 text-left group",
+                        isSelected 
+                          ? "bg-primary/20 border-primary shadow-[0_0_20px_-5px_hsl(var(--primary)/0.3)]" 
+                          : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+                      )}
+                    >
+                      <div className={cn(
+                        "mb-auto p-1.5 rounded-md transition-colors",
+                        isSelected ? "bg-primary text-primary-foreground" : "bg-black/40 text-muted-foreground group-hover:text-foreground"
+                      )}>
+                        <Gamepad2 className="h-4 w-4" />
+                      </div>
+                      <span className={cn(
+                        "text-xs font-orbitron font-bold tracking-wide",
+                        isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                      )}>
+                        {profile.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* 2. Time Mode Selection */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Session Type</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Session Duration</Label>
+            </div>
+            
             <Tabs value={timeMode} onValueChange={(v) => setTimeMode(v as "OPEN" | "FIXED")} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="OPEN" className="gap-2">
-                  <Infinity className="h-4 w-4" /> Open Time
+              <TabsList className="grid w-full grid-cols-2 h-10 bg-black/40 p-1 border border-white/5 rounded-lg">
+                <TabsTrigger 
+                  value="OPEN" 
+                  className="text-[10px] font-orbitron data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 data-[state=active]:border data-[state=active]:border-emerald-500/50 rounded-md transition-all"
+                >
+                  <Infinity className="h-3 w-3 mr-2" /> Open
                 </TabsTrigger>
-                <TabsTrigger value="FIXED" className="gap-2">
-                  <Hourglass className="h-4 w-4" /> Fixed Time
+                <TabsTrigger 
+                  value="FIXED" 
+                  className="text-[10px] font-orbitron data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 data-[state=active]:border data-[state=active]:border-blue-500/50 rounded-md transition-all"
+                >
+                  <Hourglass className="h-3 w-3 mr-2" /> Fixed
                 </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="FIXED" className="space-y-3 mt-3 animate-in fade-in zoom-in-95">
+              <TabsContent value="FIXED" className="space-y-3 mt-4 animate-in fade-in slide-in-from-top-2">
                 <div className="grid grid-cols-3 gap-2">
                   <DurationBtn mins={30} label="30m" />
                   <DurationBtn mins={60} label="1h" />
@@ -283,16 +318,15 @@ const StartSessionModal = ({
                   <DurationBtn mins={180} label="3h" />
                   <div className="relative">
                     <Input 
-                      placeholder="Custom" 
+                      placeholder="Min" 
                       type="number"
-                      className="h-10 text-xs px-2 text-center"
+                      className="h-9 text-xs px-2 text-center bg-black/20 border-white/10 focus-visible:ring-primary/50"
                       value={customDuration}
                       onChange={(e) => {
                         setCustomDuration(e.target.value);
                         setFixedDuration(null);
                       }}
                     />
-                    <span className="absolute right-2 top-2.5 text-[10px] text-muted-foreground">min</span>
                   </div>
                 </div>
               </TabsContent>
@@ -301,19 +335,19 @@ const StartSessionModal = ({
 
           {/* 3. Pending Bills (Carry Forward) */}
           {pendingBills.length > 0 && (
-            <div className="space-y-3 pt-2 border-t">
-              <Label className="text-sm font-medium flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-primary" /> Carry Forward Bill
+            <div className="space-y-3 pt-2 border-t border-white/10">
+              <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold flex items-center gap-2">
+                <Receipt className="h-3 w-3 text-amber-500" /> Carry Forward
               </Label>
               <Select value={selectedBillId} onValueChange={setSelectedBillId}>
-                <SelectTrigger className="h-10 bg-muted/20 text-xs">
+                <SelectTrigger className="h-10 bg-black/20 border-white/10 text-xs">
                   <SelectValue placeholder="Select a pending bill..." />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No Previous Bill</SelectItem>
+                <SelectContent className="bg-[#0f1115] border-white/10">
+                  <SelectItem value="none" className="text-xs">None</SelectItem>
                   {pendingBills.map((bill) => (
-                    <SelectItem key={bill.id} value={bill.id}>
-                      {bill.devices.name} - ₹{bill.final_amount} 
+                    <SelectItem key={bill.id} value={bill.id} className="text-xs">
+                      {bill.devices.name} <span className="text-muted-foreground ml-2">₹{bill.final_amount}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -322,13 +356,23 @@ const StartSessionModal = ({
           )}
         </div>
 
-        <Button
-          onClick={handleStartSession}
-          disabled={loading || !selectedRate}
-          className="w-full h-12 text-lg font-orbitron"
-        >
-          {loading ? "Starting..." : "Start Session"}
-        </Button>
+        {/* Footer Actions */}
+        <div className="p-4 bg-black/20 backdrop-blur-sm border-t border-white/5 flex gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)} 
+            className="flex-1 h-12 text-xs border-white/10 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleStartSession}
+            disabled={loading || !selectedRate}
+            className="flex-[2] w-full h-12 text-sm font-orbitron font-bold tracking-wide bg-gradient-to-r from-primary to-blue-600 hover:scale-[1.02] transition-transform shadow-lg shadow-primary/20 text-white border-0"
+          >
+            {loading ? <Clock className="h-4 w-4 animate-spin" /> : "Start Session"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

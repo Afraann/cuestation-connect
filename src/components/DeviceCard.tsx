@@ -163,7 +163,7 @@ const DeviceCard = ({ device, startTime, plannedDuration, playerCount, onClick, 
                   isLowTime ? "text-amber-500/80" : "text-muted-foreground"
                 )}>
                   {isLowTime ? <AlertTriangle className="h-3 w-3" /> : (plannedDuration ? <Hourglass className="h-3 w-3" /> : <Clock className="h-3 w-3" />)}
-                  {isOvertime ? "Overdue" : isLowTime ? "Expiring" : "Time"}
+                  {isOvertime ? "Overdue" : isLowTime ? "Almost Time" : "Time"}
                 </span>
                 <span className={cn(
                   "text-2xl font-black font-orbitron leading-none tracking-tight",

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, User, Menu, BarChart3, Receipt, RotateCcw, Sparkles, Gamepad, LayoutGrid, Settings, FileText, ShoppingCart } from "lucide-react";
+import { LogOut, Menu, BarChart3, Receipt, RotateCcw, Refrigerator, Settings, ShoppingCart } from "lucide-react";
 import DeviceCard from "@/components/DeviceCard";
 import StartSessionModal from "@/components/StartSessionModal";
 import SessionManagerModal from "@/components/SessionManagerModal";
@@ -309,11 +309,11 @@ const StaffDashboard = () => {
       
       <div className="fixed bottom-4 right-4 z-40">
           <Button 
-              className="h-10 px-4 rounded-full shadow-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 text-white flex gap-2 items-center transition-all"
+              className="h-14 px-10 shadow-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 text-white flex gap-2 items-center transition-all"
               onClick={() => setIsDirectSaleOpen(true)}
           >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span className="font-orbitron font-bold text-[10px] tracking-wide">Quick Sale</span>
+              <Refrigerator className="h-5 w-5" />
+              <span className="font-orbitron font-bold text-[10px] tracking-wide">Juice/Snack Counter</span>
           </Button>
       </div>
     </div>

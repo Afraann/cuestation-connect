@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Minus, Wallet, Smartphone, ShoppingCart, Split } from "lucide-react";
+import { Plus, Minus, ShoppingCart, Trash2, X, RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -41,13 +41,11 @@ const DirectSaleModal = ({
   // Payment States
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "UPI" | "SPLIT" | null>(null);
   const [cashAmount, setCashAmount] = useState<string>("");
-  const [step, setStep] = useState<"SELECT" | "PAY">("SELECT");
 
   useEffect(() => {
     if (open) {
       fetchProducts();
       setCart({});
-      setStep("SELECT");
       setPaymentMethod(null);
       setCashAmount("");
     }
@@ -112,17 +110,14 @@ const DirectSaleModal = ({
     setSubmitting(true);
     const { price: totalPrice } = calculateTotal();
     
-    // Calculate Split Amounts
     const cashVal = parseFloat(cashAmount) || 0;
-    
-    // Determine final split
     const finalCash = paymentMethod === "CASH" ? totalPrice : (paymentMethod === "SPLIT" ? cashVal : 0);
     const finalUpi = paymentMethod === "UPI" ? totalPrice : (paymentMethod === "SPLIT" ? totalPrice - cashVal : 0);
 
     const cartItems = Object.entries(cart);
 
     try {
-      // 1. Deduct Stock (Session Items with NULL session_id)
+      // 1. Deduct Stock
       const promises = cartItems.map(([productId, quantity]) => {
         const product = products.find((p) => p.id === productId);
         if (!product) return Promise.resolve();
@@ -137,12 +132,13 @@ const DirectSaleModal = ({
 
       await Promise.all(promises);
 
+      // 2. Record Sale
       const { error: saleError } = await supabase.from("direct_sales").insert({
         payment_method: paymentMethod,
         total_amount: totalPrice,
         amount_cash: finalCash,
         amount_upi: finalUpi,
-        items: cart // Optional: store the cart JSON for record
+        items: cart 
       });
 
       if (saleError) throw saleError;
@@ -159,22 +155,33 @@ const DirectSaleModal = ({
   };
 
   const { count: totalItems, price: totalPrice } = calculateTotal();
+  const cartEntries = Object.entries(cart);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] flex flex-col p-0 gap-0 sm:max-w-md">
-        <DialogHeader className="p-4 border-b">
-          <DialogTitle className="font-orbitron flex justify-between items-center">
-            <span>
-                {step === "SELECT" ? "Counter Sale" : "Payment"}
-            </span>
-            {/* Badge removed here */}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-4xl bg-[#0f1115] border border-white/10 p-0 gap-0 shadow-2xl [&>button]:hidden flex flex-col md:flex-row h-[90vh] md:h-[600px]">
+        
+        {/* --- LEFT PANEL: PRODUCT SELECTION --- */}
+        <div className="flex-1 flex flex-col border-r border-white/5 overflow-hidden">
+          <DialogHeader className="p-4 border-b border-white/5 bg-white/5 flex flex-row items-center justify-between space-y-0">
+            <DialogTitle className="font-orbitron text-lg flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-primary" />
+              <span>Counter Sale</span>
+            </DialogTitle>
+            
+            {/* Mobile Close Button */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => onOpenChange(false)}
+              className="md:hidden h-8 w-8"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogHeader>
 
-        {step === "SELECT" ? (
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="flex-1 overflow-y-auto p-4 bg-background/20">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {products.map((product) => {
                 const qtyInCart = cart[product.id] || 0;
                 const isOutOfStock = product.stock <= 0;
@@ -182,36 +189,42 @@ const DirectSaleModal = ({
                 return (
                   <div
                     key={product.id}
-                    className={`relative flex flex-col bg-card border rounded-xl overflow-hidden transition-all ${
-                      qtyInCart > 0 ? "border-primary/50 ring-1 ring-primary/20" : "border-border/50"
-                    } ${isOutOfStock ? "opacity-60 grayscale" : ""}`}
+                    className={cn(
+                      "relative flex flex-col bg-card/40 border border-white/5 rounded-xl overflow-hidden transition-all duration-200 group",
+                      qtyInCart > 0 ? "ring-1 ring-primary/50 border-primary/20 bg-primary/5" : "hover:border-white/20",
+                      isOutOfStock && "opacity-50 grayscale pointer-events-none"
+                    )}
                   >
                     <div className="absolute top-2 right-2 z-10">
                       {isOutOfStock ? (
-                        <Badge variant="destructive" className="text-[10px] h-5 px-1.5">Out</Badge>
+                        <Badge variant="destructive" className="text-[9px] h-4 px-1.5 font-bold uppercase">Out</Badge>
                       ) : (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-muted text-muted-foreground border-border">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 bg-black/40 text-muted-foreground backdrop-blur-md">
                           {product.stock}
                         </span>
                       )}
                     </div>
 
                     <button
-                      className="flex-1 flex flex-col items-center justify-center p-3 pt-6 min-h-[100px]"
+                      className="flex-1 flex flex-col items-start justify-end p-3 pt-8 min-h-[90px] w-full text-left outline-none"
                       onClick={() => !isOutOfStock && updateQuantity(product, 1)}
                       disabled={isOutOfStock}
                     >
-                      <span className="font-medium text-sm text-center leading-tight mb-1">{product.name}</span>
-                      <span className="text-xs text-muted-foreground font-orbitron">₹{product.price}</span>
+                      <span className="font-bold text-sm leading-tight mb-1 text-gray-200 group-hover:text-white transition-colors">
+                        {product.name}
+                      </span>
+                      <span className="text-xs font-mono text-primary">
+                        ₹{product.price}
+                      </span>
                     </button>
 
                     {qtyInCart > 0 && (
-                      <div className="flex items-center justify-between p-1 bg-muted/50 border-t border-border/50">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQuantity(product, -1)}>
-                          <Minus className="h-3 w-3" />
+                      <div className="flex items-center justify-between p-1 bg-black/40 border-t border-white/5">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-red-400" onClick={() => updateQuantity(product, -1)}>
+                          {qtyInCart === 1 ? <Trash2 className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
                         </Button>
-                        <span className="text-sm font-bold w-6 text-center font-orbitron">{qtyInCart}</span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQuantity(product, 1)}>
+                        <span className="text-sm font-bold font-orbitron w-6 text-center text-white">{qtyInCart}</span>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-white" onClick={() => updateQuantity(product, 1)}>
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
@@ -221,98 +234,107 @@ const DirectSaleModal = ({
               })}
             </div>
           </div>
-        ) : (
-          <div className="flex-1 p-6 flex flex-col justify-start gap-6 overflow-y-auto">
-             <div className="text-center">
-                <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Total Payable</p>
-                <p className="text-4xl font-black font-orbitron text-primary">₹{totalPrice}</p>
-             </div>
-
-             <div className="space-y-3">
-                <Label className="text-xs text-muted-foreground uppercase">Payment Mode</Label>
-                <div className="grid grid-cols-3 gap-3">
-                    <Button 
-                        variant={paymentMethod === "CASH" ? "default" : "outline"}
-                        className={cn("h-16 flex flex-col gap-1", paymentMethod === "CASH" && "ring-2 ring-primary ring-offset-2")}
-                        onClick={() => setPaymentMethod("CASH")}
-                    >
-                        <Wallet className="h-5 w-5" />
-                        <span className="font-orbitron text-xs">CASH</span>
-                    </Button>
-                    <Button 
-                        variant={paymentMethod === "UPI" ? "default" : "outline"}
-                        className={cn("h-16 flex flex-col gap-1", paymentMethod === "UPI" && "ring-2 ring-primary ring-offset-2")}
-                        onClick={() => setPaymentMethod("UPI")}
-                    >
-                        <Smartphone className="h-5 w-5" />
-                        <span className="font-orbitron text-xs">UPI</span>
-                    </Button>
-                    <Button 
-                        variant={paymentMethod === "SPLIT" ? "default" : "outline"}
-                        className={cn("h-16 flex flex-col gap-1", paymentMethod === "SPLIT" && "ring-2 ring-primary ring-offset-2")}
-                        onClick={() => setPaymentMethod("SPLIT")}
-                    >
-                        <Split className="h-5 w-5" />
-                        <span className="font-orbitron text-xs">SPLIT</span>
-                    </Button>
-                </div>
-             </div>
-
-             {/* Split Payment Inputs */}
-             {paymentMethod === "SPLIT" && (
-                <div className="space-y-3 animate-in slide-in-from-top-2 fade-in duration-300 p-4 bg-muted/30 rounded-lg border border-border/50">
-                    <div className="space-y-1.5">
-                        <Label className="text-xs">Cash Received</Label>
-                        <Input
-                            type="number"
-                            value={cashAmount}
-                            onChange={(e) => setCashAmount(e.target.value)}
-                            placeholder="Enter cash amount"
-                            className="bg-background h-10 text-lg font-mono"
-                            autoFocus
-                        />
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-border/50">
-                        <span className="text-xs text-muted-foreground">UPI Balance</span>
-                        <span className="text-lg font-bold font-orbitron text-primary">
-                            ₹{Math.max(0, totalPrice - (parseFloat(cashAmount) || 0))}
-                        </span>
-                    </div>
-                </div>
-             )}
-          </div>
-        )}
-
-        <div className="p-4 border-t bg-card/95 backdrop-blur">
-          {step === "SELECT" ? (
-            <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Total</span>
-                <span className="text-xl font-bold font-orbitron text-primary">₹{totalPrice}</span>
-                </div>
-                <Button 
-                className="flex-1 h-12 font-orbitron text-base"
-                onClick={() => setStep("PAY")}
-                disabled={totalItems === 0}
-                >
-                Checkout <ShoppingCart className="ml-2 h-4 w-4" />
-                </Button>
-            </div>
-          ) : (
-            <div className="flex gap-3">
-                <Button variant="outline" className="h-12 flex-1" onClick={() => setStep("SELECT")}>
-                    Back
-                </Button>
-                <Button 
-                    className="flex-[2] h-12 font-orbitron text-base"
-                    onClick={handleCheckout}
-                    disabled={submitting || !paymentMethod}
-                >
-                    {submitting ? "Processing..." : "Confirm Sale"}
-                </Button>
-            </div>
-          )}
         </div>
+
+        {/* --- RIGHT PANEL: CART & PAYMENT --- */}
+        <div className="w-full md:w-[320px] bg-[#0f1115] flex flex-col h-[40vh] md:h-full border-t md:border-t-0 md:border-l border-white/10">
+          
+          <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
+             <span className="text-xs font-bold font-orbitron uppercase tracking-wider text-muted-foreground">Current Order</span>
+             <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground hover:text-white" onClick={() => setCart({})}>
+               <RefreshCcw className="h-3 w-3 mr-1" /> Reset
+             </Button>
+          </div>
+
+          {/* Cart Items List */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {cartEntries.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground/30">
+                <ShoppingCart className="h-8 w-8 mb-2" />
+                <p className="text-xs">Cart is empty</p>
+              </div>
+            ) : (
+              cartEntries.map(([id, qty]) => {
+                const product = products.find(p => p.id === id);
+                if (!product) return null;
+                return (
+                  <div key={id} className="flex justify-between items-center p-2 rounded-lg bg-white/5 border border-white/5">
+                    <div>
+                      <p className="text-xs font-medium text-gray-200">{product.name}</p>
+                      <p className="text-[10px] text-muted-foreground">x{qty} @ ₹{product.price}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-mono font-bold text-white">₹{qty * product.price}</p>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* Payment Section */}
+          <div className="p-4 bg-black/20 border-t border-white/10 space-y-4">
+             <div className="flex justify-between items-end">
+               <span className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Total Payable</span>
+               <span className="text-3xl font-orbitron font-bold text-primary">₹{totalPrice}</span>
+             </div>
+
+             <div className="space-y-2">
+                <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Payment Mode</Label>
+                <div className="grid grid-cols-3 gap-2">
+                    {["CASH", "UPI", "SPLIT"].map((method) => (
+                      <Button
+                        key={method}
+                        variant="outline"
+                        className={cn(
+                          "h-10 text-[10px] font-bold tracking-wider uppercase transition-all duration-300",
+                          paymentMethod === method 
+                            ? "bg-primary/20 border-primary text-primary shadow-[0_0_15px_-3px_hsl(var(--primary)/0.3)]" 
+                            : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:text-white"
+                        )}
+                        onClick={() => setPaymentMethod(method as any)}
+                        disabled={totalItems === 0}
+                      >
+                        {method}
+                      </Button>
+                    ))}
+                </div>
+
+                {paymentMethod === "SPLIT" && (
+                  <div className="animate-in slide-in-from-top-2 pt-1">
+                    <div className="flex gap-2 items-center bg-black/40 p-2 rounded-lg border border-white/10">
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">Cash:</span>
+                      <Input
+                        type="number"
+                        value={cashAmount}
+                        onChange={(e) => setCashAmount(e.target.value)}
+                        placeholder="0"
+                        className="h-7 w-20 text-sm bg-transparent border-0 border-b border-white/20 rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-center font-mono"
+                      />
+                      <div className="flex-1 text-right">
+                        <span className="text-[10px] text-muted-foreground mr-2">UPI:</span>
+                        <span className="font-bold text-primary font-mono text-sm">₹{Math.max(0, totalPrice - (parseFloat(cashAmount) || 0))}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+             </div>
+
+             <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-12 text-xs border-white/10 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white hidden md:inline-flex">
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCheckout}
+                  disabled={submitting || totalItems === 0 || !paymentMethod}
+                  className="flex-[2] h-12 text-sm font-orbitron font-bold tracking-wide bg-gradient-to-r from-primary to-blue-600 hover:scale-[1.02] transition-transform shadow-lg text-white border-0"
+                >
+                  {submitting ? "Processing..." : "Complete Sale"}
+                </Button>
+             </div>
+          </div>
+        </div>
+
       </DialogContent>
     </Dialog>
   );

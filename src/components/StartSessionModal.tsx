@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -16,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Gamepad2, Receipt } from "lucide-react";
+import { Gamepad2, Receipt, Infinity, Hourglass, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Device {
@@ -55,6 +57,12 @@ const StartSessionModal = ({
   const [selectedRate, setSelectedRate] = useState<string>("");
   const [pendingBills, setPendingBills] = useState<PendingBill[]>([]);
   const [selectedBillId, setSelectedBillId] = useState<string>("none");
+  
+  // NEW: Time Selection State
+  const [timeMode, setTimeMode] = useState<"OPEN" | "FIXED">("OPEN");
+  const [fixedDuration, setFixedDuration] = useState<number | null>(null);
+  const [customDuration, setCustomDuration] = useState<string>("");
+
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -63,19 +71,21 @@ const StartSessionModal = ({
       fetchPendingBills();
       setSelectedRate("");
       setSelectedBillId("none");
+      // Reset Time Mode
+      setTimeMode("OPEN");
+      setFixedDuration(null);
+      setCustomDuration("");
     }
   }, [open, device.type]);
 
   const fetchRateProfiles = async () => {
-    // Fetch from the TEST table to ensure we have the correct IDs for the new logic
     const { data } = await supabase
-      .from("rate_profiles_test")
+      .from("rate_profiles")
       .select("*")
       .eq("device_type", device.type)
       .order("name");
     setRateProfiles(data || []);
     
-    // Auto-select if only one option (useful for Billiards/Carrom)
     if (device.type !== "PS5" && data && data.length === 1) {
       setSelectedRate(data[0].id);
     }
@@ -108,6 +118,21 @@ const StartSessionModal = ({
       return;
     }
 
+    // Validate Fixed Duration
+    let finalDuration = null;
+    if (timeMode === "FIXED") {
+      if (customDuration) {
+        finalDuration = parseInt(customDuration);
+      } else if (fixedDuration) {
+        finalDuration = fixedDuration;
+      }
+      
+      if (!finalDuration || finalDuration <= 0) {
+        toast.error("Please select a valid duration");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -127,35 +152,23 @@ const StartSessionModal = ({
         .from("sessions")
         .insert({
           device_id: device.id,
-          // We assume selectedRate is a valid ID from rate_profiles_test now
-          // For the actual `rate_profile_id` column in `sessions`, we might need a real ID 
-          // or we can store the test ID if we don't mind foreign key constraint errors 
-          // (assuming you dropped the FK or we are just testing).
-          // Ideally, we'd sync them, but for this test, we store it.
-          rate_profile_id: selectedRate, 
+          rate_profile_id: selectedRate,
           status: "ACTIVE",
           transfer_session_id: transferSessionId,
           transfer_amount: transferAmount,
+          planned_duration: finalDuration, // NEW: Save the duration
         })
         .select()
         .single();
 
       if (sessionError) throw sessionError;
 
-      // 2. Create Initial Log Entry (The History Tracker)
-      const { error: logError } = await supabase
-        .from("session_logs_test")
-        .insert({
-          session_id: session.id,
-          rate_profile_id: selectedRate,
-          start_time: new Date().toISOString(),
-          // end_time is null, meaning it's currently active
-        });
-
-      if (logError) {
-        console.error("Log error:", logError);
-        // We don't stop the flow, but we log it
-      }
+      // 2. Create Initial Log Entry
+      await supabase.from("session_logs").insert({
+        session_id: session.id,
+        rate_profile_id: selectedRate,
+        start_time: new Date().toISOString(),
+      });
 
       // 3. Update Device
       const { error: deviceError } = await supabase
@@ -187,9 +200,23 @@ const StartSessionModal = ({
     return "text-primary";
   };
 
+  // Helper for Fixed Time Buttons
+  const DurationBtn = ({ mins, label }: { mins: number; label: string }) => (
+    <Button
+      variant={fixedDuration === mins && !customDuration ? "default" : "outline"}
+      className={cn("h-10 text-xs", fixedDuration === mins && !customDuration && "ring-2 ring-primary")}
+      onClick={() => {
+        setFixedDuration(mins);
+        setCustomDuration("");
+      }}
+    >
+      {label}
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md min-h-[400px] flex flex-col justify-center gap-6">
+      <DialogContent className="sm:max-w-md min-h-[500px] flex flex-col gap-6">
         <DialogHeader>
           <DialogTitle className="font-orbitron text-2xl text-center">
             Start Session
@@ -197,7 +224,8 @@ const StartSessionModal = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 flex-1 flex flex-col justify-center">
+        <div className="space-y-6 flex-1 overflow-y-auto pr-1">
+          {/* 1. Rate Selection */}
           {device.type === "PS5" ? (
             <div className="grid grid-cols-2 gap-4">
               {rateProfiles.map((profile) => (
@@ -205,13 +233,13 @@ const StartSessionModal = ({
                   key={profile.id}
                   variant={selectedRate === profile.id ? "default" : "outline"}
                   className={cn(
-                    "h-28 flex flex-col gap-2 hover:scale-105 transition-all duration-200",
+                    "h-24 flex flex-col gap-2 hover:scale-105 transition-all duration-200",
                     selectedRate === profile.id ? "border-primary ring-2 ring-primary ring-offset-2" : "border-2"
                   )}
                   onClick={() => setSelectedRate(profile.id)}
                 >
-                  <Gamepad2 className={cn("h-10 w-10", getIconColor(profile.name))} />
-                  <span className="font-orbitron text-sm">{profile.name}</span>
+                  <Gamepad2 className={cn("h-8 w-8", getIconColor(profile.name))} />
+                  <span className="font-orbitron text-xs">{profile.name}</span>
                 </Button>
               ))}
             </div>
@@ -233,13 +261,52 @@ const StartSessionModal = ({
             </div>
           )}
 
+          {/* 2. Time Mode Selection */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Session Type</Label>
+            <Tabs value={timeMode} onValueChange={(v) => setTimeMode(v as "OPEN" | "FIXED")} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="OPEN" className="gap-2">
+                  <Infinity className="h-4 w-4" /> Open Time
+                </TabsTrigger>
+                <TabsTrigger value="FIXED" className="gap-2">
+                  <Hourglass className="h-4 w-4" /> Fixed Time
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="FIXED" className="space-y-3 mt-3 animate-in fade-in zoom-in-95">
+                <div className="grid grid-cols-3 gap-2">
+                  <DurationBtn mins={30} label="30m" />
+                  <DurationBtn mins={60} label="1h" />
+                  <DurationBtn mins={90} label="1.5h" />
+                  <DurationBtn mins={120} label="2h" />
+                  <DurationBtn mins={180} label="3h" />
+                  <div className="relative">
+                    <Input 
+                      placeholder="Custom" 
+                      type="number"
+                      className="h-10 text-xs px-2 text-center"
+                      value={customDuration}
+                      onChange={(e) => {
+                        setCustomDuration(e.target.value);
+                        setFixedDuration(null);
+                      }}
+                    />
+                    <span className="absolute right-2 top-2.5 text-[10px] text-muted-foreground">min</span>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* 3. Pending Bills (Carry Forward) */}
           {pendingBills.length > 0 && (
             <div className="space-y-3 pt-2 border-t">
               <Label className="text-sm font-medium flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-primary" /> Carry Forward Bill (Optional)
+                <Receipt className="h-4 w-4 text-primary" /> Carry Forward Bill
               </Label>
               <Select value={selectedBillId} onValueChange={setSelectedBillId}>
-                <SelectTrigger className="h-12 bg-muted/20">
+                <SelectTrigger className="h-10 bg-muted/20 text-xs">
                   <SelectValue placeholder="Select a pending bill..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -247,24 +314,21 @@ const StartSessionModal = ({
                   {pendingBills.map((bill) => (
                     <SelectItem key={bill.id} value={bill.id}>
                       {bill.devices.name} - ₹{bill.final_amount} 
-                      <span className="text-muted-foreground ml-2 text-xs">
-                        ({new Date(bill.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})
-                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           )}
-
-          <Button
-            onClick={handleStartSession}
-            disabled={loading || !selectedRate}
-            className="w-full h-14 text-lg font-orbitron mt-2"
-          >
-            {loading ? "Starting..." : "Start Session"}
-          </Button>
         </div>
+
+        <Button
+          onClick={handleStartSession}
+          disabled={loading || !selectedRate}
+          className="w-full h-12 text-lg font-orbitron"
+        >
+          {loading ? "Starting..." : "Start Session"}
+        </Button>
       </DialogContent>
     </Dialog>
   );

@@ -49,7 +49,6 @@ interface GroupedItem {
   original_ids: string[];
 }
 
-// Renamed from TestRateProfile to RateProfile for consistency
 interface RateProfile {
   id: string;
   name: string;
@@ -107,7 +106,7 @@ const SessionManagerModal = ({
 
       fetchSessionItems();
       fetchPayments();
-      fetchRateProfiles(); // Fetching REAL profiles
+      fetchRateProfiles();
       fetchActiveLog();
 
       setPaymentMethod(null);
@@ -173,7 +172,7 @@ const SessionManagerModal = ({
 
   const fetchRateProfiles = async () => {
     const { data } = await supabase
-      .from("rate_profiles") // UPDATED: Pointing to REAL table
+      .from("rate_profiles")
       .select("*")
       .eq("device_type", device.type)
       .order("name");
@@ -189,7 +188,7 @@ const SessionManagerModal = ({
 
   const fetchActiveLog = async () => {
     const { data } = await supabase
-      .from("session_logs") // UPDATED: Pointing to REAL table
+      .from("session_logs")
       .select("rate_profile_id")
       .eq("session_id", session.id)
       .is("end_time", null)
@@ -206,7 +205,7 @@ const SessionManagerModal = ({
     if (newProfileId === selectedProfileId) return;
     
     const { error: closeError } = await supabase
-      .from("session_logs") // UPDATED: Pointing to REAL table
+      .from("session_logs")
       .update({ end_time: new Date().toISOString() })
       .eq("session_id", session.id)
       .is("end_time", null);
@@ -214,7 +213,7 @@ const SessionManagerModal = ({
     if (closeError) console.error("Error closing log:", closeError);
     
     const { error: openError } = await supabase
-      .from("session_logs") // UPDATED: Pointing to REAL table
+      .from("session_logs")
       .insert({
         session_id: session.id,
         rate_profile_id: newProfileId,
@@ -226,27 +225,41 @@ const SessionManagerModal = ({
     } else {
       toast.success("Rate profile updated");
       setSelectedProfileId(newProfileId);
-      // Sync with main session record
       await supabase.from("sessions").update({ rate_profile_id: newProfileId }).eq("id", session.id);
     }
   };
 
-  // Weighted Bill Calculation
+  // --- SAFE BILL CALCULATION ---
   const calculateBill = async () => {
     // 1. Fetch History Logs from REAL table
     const { data: logs } = await supabase
-      .from("session_logs") // UPDATED: Pointing to REAL table
+      .from("session_logs")
       .select("*")
       .eq("session_id", session.id)
       .order("start_time", { ascending: true });
 
     let calculatedTimeCharge = 0;
 
-    // If no logs exist (legacy session), fallback to basic calculation
+    // Helper: Find a profile, fallback to first available if ID is broken
+    const getSafeProfile = (id: string) => {
+        const match = rateProfiles.find(p => p.id === id);
+        if (match) return match;
+        // Fallback Mechanism: Use the first valid profile for this device
+        if (rateProfiles.length > 0) return rateProfiles[0];
+        return undefined;
+    };
+
+    // If no logs exist (legacy/broken session), fallback to basic calculation
     if (!logs || logs.length === 0) {
-      const currentProfile = rateProfiles.find(p => p.id === selectedProfileId || p.id === session.rate_profile_id);
+      const targetId = selectedProfileId || session.rate_profile_id;
+      const currentProfile = getSafeProfile(targetId);
+
       if (currentProfile) {
-        // Fallback: Single Segment using total duration
+        // Fix the UI state if we had to fallback
+        if (currentProfile.id !== selectedProfileId) {
+            setSelectedProfileId(currentProfile.id);
+        }
+
         const segments: SessionSegment[] = [{
           durationMins: duration,
           pricingTiers: currentProfile.pricing_tiers
@@ -259,7 +272,7 @@ const SessionManagerModal = ({
       const now = new Date();
 
       logs.forEach(log => {
-        const profile = rateProfiles.find(p => p.id === log.rate_profile_id);
+        const profile = getSafeProfile(log.rate_profile_id);
         if (profile) {
           const startTime = new Date(log.start_time);
           const endTime = log.end_time ? new Date(log.end_time) : now;
@@ -316,7 +329,7 @@ const SessionManagerModal = ({
     }
     setLoading(true);
     try {
-      // UPDATED: Close log in REAL table
+      // Close log in REAL table
       await supabase
         .from("session_logs")
         .update({ end_time: new Date().toISOString() })

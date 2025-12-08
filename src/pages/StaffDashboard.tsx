@@ -32,12 +32,20 @@ interface Session {
   id: string;
   start_time: string;
   rate_profile_id: string;
+  transfer_amount: number;
+  transfer_session_id: string | null;
+  planned_duration: number | null; // NEW FIELD
+}
+
+interface SessionData {
+  startTime: string;
+  plannedDuration: number | null;
 }
 
 const StaffDashboard = () => {
   const { logout, user } = useAuth();
   const [devices, setDevices] = useState<Device[]>([]);
-  const [deviceSessions, setDeviceSessions] = useState<Record<string, string>>({});
+  const [deviceSessions, setDeviceSessions] = useState<Record<string, SessionData>>({}); // Updated Type
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [layout, setLayout] = useState<"default" | "rotated">("default");
   
@@ -57,14 +65,8 @@ const StaffDashboard = () => {
       .channel("devices-changes")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "devices",
-        },
-        () => {
-          fetchData();
-        }
+        { event: "*", schema: "public", table: "devices" },
+        () => fetchData()
       )
       .subscribe();
 
@@ -84,19 +86,23 @@ const StaffDashboard = () => {
       return;
     }
 
+    // UPDATED QUERY: Fetch planned_duration
     const { data: sessionsData, error: sessionsError } = await supabase
       .from("sessions")
-      .select("device_id, start_time")
+      .select("device_id, start_time, planned_duration")
       .eq("status", "ACTIVE");
 
     if (sessionsError) {
       console.error("Error fetching active sessions:", sessionsError);
     }
 
-    const sessionsMap: Record<string, string> = {};
+    const sessionsMap: Record<string, SessionData> = {};
     if (sessionsData) {
       sessionsData.forEach((session) => {
-        sessionsMap[session.device_id] = session.start_time;
+        sessionsMap[session.device_id] = {
+          startTime: session.start_time,
+          plannedDuration: session.planned_duration
+        };
       });
     }
 
@@ -126,19 +132,28 @@ const StaffDashboard = () => {
     }
   };
 
-  // Helper to safely get device by name (fuzzy match)
   const getDevice = (namePart: string) => devices.find(d => d.name.toLowerCase().includes(namePart.toLowerCase()));
 
-  // Categorized lists for Default View
   const billiards = devices.filter((d) => d.type === "BILLIARDS");
   const ps5s = devices.filter((d) => d.type === "PS5");
   const carroms = devices.filter((d) => d.type === "CARROM");
+
+  // Helper to render card with session props
+  const renderCard = (device: Device, className?: string) => (
+    <DeviceCard
+      key={device.id}
+      device={device}
+      startTime={deviceSessions[device.id]?.startTime}
+      plannedDuration={deviceSessions[device.id]?.plannedDuration}
+      onClick={() => handleDeviceClick(device)}
+      className={className || "[&_svg]:text-white h-full"}
+    />
+  );
 
   return (
     <div className="min-h-screen bg-background p-4 relative overflow-x-hidden">
       
       <div className="fixed top-4 right-4 z-50 flex gap-3 items-center">
-        {/* Layout Toggle Button */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button 
@@ -199,125 +214,58 @@ const StaffDashboard = () => {
           <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500">
             {/* Billiards Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {billiards.map((device) => (
-                <DeviceCard
-                  key={device.id}
-                  device={device}
-                  startTime={deviceSessions[device.id]}
-                  onClick={() => handleDeviceClick(device)}
-                  className="[&_svg]:text-white h-full"
-                />
-              ))}
+              {billiards.map((device) => renderCard(device))}
             </div>
 
             {/* Consoles Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-4">
-                {ps5s.slice(0, 2).map((device) => (
-                  <DeviceCard
-                    key={device.id}
-                    device={device}
-                    startTime={deviceSessions[device.id]}
-                    onClick={() => handleDeviceClick(device)}
-                    className="[&_svg]:text-white"
-                  />
-                ))}
+                {ps5s.slice(0, 2).map((device) => renderCard(device, "[&_svg]:text-white"))}
               </div>
 
               <div className="flex flex-col gap-4 justify-start">
-                {ps5s[2] && (
-                  <DeviceCard
-                    device={ps5s[2]}
-                    startTime={deviceSessions[ps5s[2].id]}
-                    onClick={() => handleDeviceClick(ps5s[2])}
-                    className="[&_svg]:text-white"
-                  />
-                )}
-                {carroms[0] && (
-                  <DeviceCard
-                    device={carroms[0]}
-                    startTime={deviceSessions[carroms[0].id]}
-                    onClick={() => handleDeviceClick(carroms[0])}
-                    className="[&_svg]:text-white"
-                  />
-                )}
+                {ps5s[2] && renderCard(ps5s[2], "[&_svg]:text-white")}
+                {carroms[0] && renderCard(carroms[0], "[&_svg]:text-white")}
               </div>
 
               <div className="space-y-4">
-                {ps5s.slice(3, 5).map((device) => (
-                  <DeviceCard
-                    key={device.id}
-                    device={device}
-                    startTime={deviceSessions[device.id]}
-                    onClick={() => handleDeviceClick(device)}
-                    className="[&_svg]:text-white"
-                  />
-                ))}
+                {ps5s.slice(3, 5).map((device) => renderCard(device, "[&_svg]:text-white"))}
               </div>
             </div>
           </div>
         ) : (
           /* ================= ROTATED LAYOUT (Vertical) ================= */
-          /* Logic: Centered, Specific Stacking */
           <div className="max-w-7xl mx-auto flex flex-row justify-center gap-8 h-full animate-in fade-in slide-in-from-right-4 duration-500 p-4 overflow-x-auto">
             
-            {/* 1. Billiards Column (Stacked Vertically: Pool-2 Top -> Pool-1 Bottom) */}
+            {/* 1. Billiards Column */}
             <div className="flex flex-col gap-4 min-w-[280px] w-full max-w-sm">
                <div className="bg-card/30 border border-border/30 rounded-lg p-2 text-center shrink-0">
                 <span className="text-xs font-orbitron text-muted-foreground uppercase tracking-widest text-[10px]">Billiards</span>
               </div>
-              
               {[getDevice("Pool-02"), getDevice("Pool-01")].map((dev) => 
-                dev && (
-                  <div key={dev.id} className="flex-1 min-h-[160px]">
-                    <DeviceCard
-                      device={dev}
-                      startTime={deviceSessions[dev.id]}
-                      onClick={() => handleDeviceClick(dev)}
-                      className="[&_svg]:text-white h-full w-full"
-                    />
-                  </div>
-                )
+                dev && renderCard(dev, "[&_svg]:text-white h-full w-full min-h-[160px]")
               )}
             </div>
 
-            {/* 2. Consoles Area (2 Columns) */}
+            {/* 2. Consoles Area */}
             <div className="flex gap-4 min-w-[580px]">
-               {/* Left Stack: PS5-04 -> PS5-03 -> PS5-02 */}
+               {/* Left Stack */}
                <div className="flex flex-col gap-4 w-full max-w-sm">
                   <div className="bg-card/30 border border-border/30 rounded-lg p-2 text-center shrink-0">
                     <span className="text-xs font-orbitron text-muted-foreground uppercase tracking-widest text-[10px]">Row A</span>
                   </div>
                   {[getDevice("PS5-04"), getDevice("PS5-03"), getDevice("PS5-02")].map((dev) => 
-                    dev && (
-                      <div key={dev.id} className="flex-1 min-h-[140px]">
-                        <DeviceCard
-                          device={dev}
-                          startTime={deviceSessions[dev.id]}
-                          onClick={() => handleDeviceClick(dev)}
-                          className="[&_svg]:text-white h-full w-full"
-                        />
-                      </div>
-                    )
+                    dev && renderCard(dev, "[&_svg]:text-white h-full w-full min-h-[140px]")
                   )}
                </div>
 
-               {/* Right Stack: PS5-05 -> Carrom-01 -> PS5-01 */}
+               {/* Right Stack */}
                <div className="flex flex-col gap-4 w-full max-w-sm">
                   <div className="bg-card/30 border border-border/30 rounded-lg p-2 text-center shrink-0">
                     <span className="text-xs font-orbitron text-muted-foreground uppercase tracking-widest text-[10px]">Row B</span>
                   </div>
                   {[getDevice("PS5-05"), getDevice("Carrom"), getDevice("PS5-01")].map((dev) => 
-                    dev && (
-                      <div key={dev.id} className="flex-1 min-h-[140px]">
-                        <DeviceCard
-                          device={dev}
-                          startTime={deviceSessions[dev.id]}
-                          onClick={() => handleDeviceClick(dev)}
-                          className="[&_svg]:text-white h-full w-full"
-                        />
-                      </div>
-                    )
+                    dev && renderCard(dev, "[&_svg]:text-white h-full w-full min-h-[140px]")
                   )}
                </div>
             </div>
@@ -353,19 +301,16 @@ const StaffDashboard = () => {
         </>
       )}
 
-      {/* Stats Modal */}
       <DailyStatsModal 
         open={isDailyStatsOpen} 
         onOpenChange={setIsDailyStatsOpen} 
       />
 
-      {/* Add Expense Modal */}
       <AddExpenseModal
         open={isExpenseModalOpen}
         onOpenChange={setIsExpenseModalOpen}
       />
 
-      {/* Direct Sale Button - Floating Bottom Right for Mobile Access */}
       <div className="fixed bottom-6 right-6 z-40">
           <Button 
               className="h-14 px-6 rounded-xl shadow-xl bg-primary hover:bg-primary/90 glow-ps5 flex gap-2 items-center"
@@ -376,7 +321,6 @@ const StaffDashboard = () => {
           </Button>
       </div>
 
-      {/* Direct Sale Modal */}
       <DirectSaleModal 
           open={isDirectSaleOpen} 
           onOpenChange={setIsDirectSaleOpen} 

@@ -10,9 +10,10 @@ import StaffDashboard from "./pages/StaffDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import SessionLedger from "./pages/SessionLedger";
 import ExpenseLedger from "./pages/ExpenseLedger";
-import DirectSalesLedger from "./pages/DirectSalesLedger"; // Import here
+import DirectSalesLedger from "./pages/DirectSalesLedger";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import { UpdateNotification } from "./components/UpdateNotification"; // Import here
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <UpdateNotification /> {/* Add this line here */}
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route
@@ -33,6 +35,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* ... rest of your routes ... */}
             <Route
               path="/admin"
               element={
@@ -58,7 +61,7 @@ const App = () => (
               }
             />
             <Route
-              path="/admin/direct-sales" // New Route
+              path="/admin/direct-sales"
               element={
                 <ProtectedRoute adminOnly>
                   <DirectSalesLedger />

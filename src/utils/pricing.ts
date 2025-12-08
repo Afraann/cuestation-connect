@@ -6,46 +6,69 @@ export type PricingTier = {
   price: number;
 };
 
+export interface SessionSegment {
+  durationMins: number;
+  pricingTiers: PricingTier[];
+}
+
 /**
  * Calculates the bill based on a fixed lookup table.
- * @param durationInMinutes - Total duration of the session
- * @param tiers - The JSON array from rate_profiles_test
+ * Used to find the "Full Price" for a specific duration.
  */
 export const calculateSessionBill = (
   durationInMinutes: number, 
   tiers: PricingTier[]
 ): number => {
-  // 1. Safety check
   if (durationInMinutes <= 0 || !tiers || tiers.length === 0) return 0;
 
-  // 2. Sort tiers by time just to be safe
+  // Round up to nearest minute for pricing lookup (standard billing practice)
+  const durationToCheck = Math.ceil(durationInMinutes);
+
   const sortedTiers = [...tiers].sort((a, b) => a.min - b.min);
 
-  // 3. Find the matching bracket
   const match = sortedTiers.find(
-    (t) => durationInMinutes >= t.min && durationInMinutes <= t.max
+    (t) => durationToCheck >= t.min && durationToCheck <= t.max
   );
 
   if (match) {
     return match.price;
   }
 
-  // 4. Handle "Out of Bounds" (Duration > Max Tier)
-  // For now, let's fall back to the highest defined price + linear extrapolation
-  // or just return the highest price.
-  // Let's implement a safe fallback: Use the last tier's price
+  // Fallback: Use the price of the highest tier
   const lastTier = sortedTiers[sortedTiers.length - 1];
-  
-  if (durationInMinutes > lastTier.max) {
-    // OPTION A: Just return max price (Safest for now)
+  if (durationToCheck > lastTier.max) {
     return lastTier.price;
-
-    // OPTION B (Advanced): Calculate extra time at the rate of the last bracket
-    // const extraMins = durationInMinutes - lastTier.max;
-    // const lastBracketDuration = lastTier.max - lastTier.min;
-    // const ratePerMin = lastTier.price / (lastTier.max > 0 ? lastTier.max : 1); // Rough estimate
-    // return lastTier.price + (extraMins * ratePerMin);
   }
 
   return 0;
+};
+
+/**
+ * Calculates the Weighted Average Bill.
+ * Formula: Sum of ( (SegmentDuration / TotalDuration) * FullPriceForTotalDuration )
+ */
+export const calculateWeightedBill = (
+  segments: SessionSegment[]
+): number => {
+  // 1. Calculate Total Duration from all segments
+  const totalDuration = segments.reduce((sum, s) => sum + s.durationMins, 0);
+
+  if (totalDuration <= 0) return 0;
+
+  let totalBill = 0;
+
+  // 2. Loop through each segment to calculate its weighted contribution
+  segments.forEach((segment) => {
+    // A. What would be the price if they played the *Entire Session* with this profile?
+    const fullPriceForTotalTime = calculateSessionBill(totalDuration, segment.pricingTiers);
+
+    // B. What fraction of the time did they actually use this profile?
+    const weight = segment.durationMins / totalDuration;
+
+    // C. Add the weighted portion to the total
+    totalBill += fullPriceForTotalTime * weight;
+  });
+
+  // 3. Round to nearest integer
+  return Math.round(totalBill);
 };

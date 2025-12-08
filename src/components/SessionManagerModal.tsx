@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowLeft, History, Pencil, ShoppingCart, Coffee, X } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, History, Forward, Pencil, ShoppingCart, Coffee, CheckCircle2 } from "lucide-react";
 import AddItemPopup from "./AddItemPopup";
 import AddPaymentDialog from "./AddPaymentDialog";
 import { cn } from "@/lib/utils";
@@ -314,10 +314,15 @@ const SessionManagerModal = ({
   };
 
   const handleCheckout = async () => {
-    if (!paymentMethod) {
-      toast.error("Please select a payment method");
+    // FIX: Only require payment method if there is a positive balance to pay
+    const finalAmountNum = parseFloat(finalAmount) || 0;
+    const balanceDueCheck = Math.max(0, finalAmountNum - totalPaid);
+
+    if (balanceDueCheck > 0 && !paymentMethod) {
+      toast.error("Select payment method to complete");
       return;
     }
+
     setLoading(true);
     try {
       await supabase
@@ -326,7 +331,6 @@ const SessionManagerModal = ({
         .eq("session_id", session.id)
         .is("end_time", null);
 
-      const finalAmountNum = parseFloat(finalAmount) || 0;
       const isCarryForward = paymentMethod === "CARRY_FORWARD";
       let totalCash = 0;
       let totalUpi = 0;
@@ -356,7 +360,7 @@ const SessionManagerModal = ({
         .update({
           end_time: new Date().toISOString(),
           status: "COMPLETED",
-          payment_method: paymentMethod,
+          payment_method: paymentMethod, // Can be null if fully paid
           amount_cash: totalCash,
           amount_upi: totalUpi,
           final_amount: finalAmountNum,
@@ -397,7 +401,7 @@ const SessionManagerModal = ({
           
           <div className="flex flex-col md:flex-row gap-4 items-start max-h-[90vh]">
             
-            {/* --- LEFT PANEL: MAIN SESSION CONTROL --- */}
+            {/* --- LEFT PANEL: SESSION CONTROLS --- */}
             <div className="w-full md:w-[400px] bg-[#0f1115] border border-white/10 rounded-xl shadow-2xl flex flex-col overflow-hidden max-h-full">
               <DialogHeader className="p-4 border-b border-white/5 bg-white/5">
                 <DialogTitle className="font-orbitron flex justify-between items-center text-lg">
@@ -405,7 +409,7 @@ const SessionManagerModal = ({
                   <div className="w-[140px]">
                     <Select value={selectedProfileId} onValueChange={handleProfileSwitch}>
                       <SelectTrigger className="h-8 text-xs bg-black/40 border-white/10 text-muted-foreground hover:text-white transition-colors">
-                        <SelectValue placeholder="Select Rate" />
+                        <SelectValue placeholder="Rate" />
                       </SelectTrigger>
                       <SelectContent className="bg-[#0f1115] border-white/10">
                         {rateProfiles.map((p) => (
@@ -446,15 +450,49 @@ const SessionManagerModal = ({
                         <span className="text-[9px] uppercase font-bold text-red-500/70 tracking-wider">Net Due</span>
                         <span className="text-lg font-mono text-red-400 font-bold">₹{balanceDue}</span>
                       </div>
-                      <div className="flex justify-between items-center pt-2 mt-1 border-t border-red-500/10 text-[9px] text-red-300/50">
-                        <span className="flex items-center gap-1">Time: <span className="font-mono">₹{calculatedAmount}</span></span>
-                        <span className="flex items-center gap-1">Items: <span className="font-mono">₹{itemsTotal}</span></span>
+                      <div className="flex justify-between items-center pt-2 mt-1 border-t border-red-500/10 text-[9px] text-red-300/50 font-medium">
+                        <span className="flex items-center gap-1">Time: <span className="font-mono text-white">₹{calculatedAmount}</span></span>
+                        <span className="flex items-center gap-1">Items: <span className="font-mono text-white">₹{itemsTotal}</span></span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Manual Override & Deposit */}
+                {(session.transfer_amount || 0) > 0 && (
+                  <div className="bg-primary/10 border border-primary/20 rounded-md p-2 flex justify-between items-center px-3">
+                    <span className="text-[10px] font-bold text-primary uppercase flex items-center gap-1.5">
+                      <Forward className="h-3 w-3" /> Prev. Due
+                    </span>
+                    <span className="text-sm font-mono font-bold text-primary">₹{session.transfer_amount}</span>
+                  </div>
+                )}
+
+                {/* Payments List */}
+                {totalPaid > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase px-1">Recent Payments</p>
+                    <div className="space-y-1 bg-white/5 rounded-lg p-1">
+                      {payments.map(p => (
+                        <div key={p.id} className="flex justify-between items-center text-xs text-muted-foreground hover:bg-white/5 p-2 rounded transition-colors group">
+                          <span>{new Date(p.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} ({p.method})</span>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-foreground font-bold">₹{p.amount}</span>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => handleEditPayment(p)} className="p-1 hover:text-blue-400 transition-colors">
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button onClick={() => handleDeletePayment(p.id)} className="p-1 hover:text-red-400 transition-colors">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Override & Deposit - Side by Side */}
                 <div className="flex gap-3 items-end">
                   <div className="space-y-1.5 flex-1">
                     <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Override Total</Label>
@@ -463,8 +501,8 @@ const SessionManagerModal = ({
                       value={finalAmount}
                       onFocus={(e) => e.target.select()}
                       onChange={(e) => setFinalAmount(e.target.value)}
-                      className="bg-black/20 border-white/10 h-10 text-sm focus-visible:ring-primary/50"
-                      placeholder="Enter amount"
+                      className="bg-black/20 border-white/10 h-10 text-sm focus-visible:ring-primary/50 text-white placeholder:text-muted-foreground/50"
+                      placeholder="Amount"
                     />
                   </div>
                   <Button 
@@ -475,24 +513,24 @@ const SessionManagerModal = ({
                         setShowAddPayment(true);
                       }}
                   >
-                      <Plus className="h-3 w-3" /> Advance Payment
+                      <Plus className="h-3 w-3" /> Deposit
                   </Button>
                 </div>
 
                 {/* Checkout Actions */}
-                {balanceDue > 0 && (
+                {balanceDue > 0 ? (
                   <div className="space-y-3 pt-3 border-t border-white/10">
-                    <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Select Payment Method</Label>
+                    <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Payment Method</Label>
                     <div className="grid grid-cols-4 gap-2">
                       {["CASH", "UPI", "SPLIT", "CARRY_FORWARD"].map((method) => (
                         <Button
                           key={method}
                           variant="outline"
                           className={cn(
-                            "h-10 text-[10px] font-bold tracking-wider uppercase transition-all duration-300",
+                            "h-11 text-[10px] font-bold tracking-wider uppercase transition-all duration-300",
                             paymentMethod === method 
                               ? "bg-primary/20 border-primary text-primary shadow-[0_0_15px_-3px_hsl(var(--primary)/0.3)]" 
-                              : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:text-white"
+                              : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:text-white hover:border-white/20"
                           )}
                           onClick={() => setPaymentMethod(method as any)}
                         >
@@ -510,7 +548,7 @@ const SessionManagerModal = ({
                             value={cashAmount}
                             onChange={(e) => setCashAmount(e.target.value)}
                             placeholder="0"
-                            className="h-7 w-24 text-sm bg-transparent border-0 border-b border-white/20 rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-center font-mono"
+                            className="h-7 w-24 text-sm bg-transparent border-0 border-b border-white/20 rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary text-center font-mono text-white"
                           />
                           <div className="flex-1 text-right">
                             <span className="text-[10px] text-muted-foreground mr-2">UPI Balance:</span>
@@ -520,11 +558,17 @@ const SessionManagerModal = ({
                       </div>
                     )}
                   </div>
+                ) : (
+                  /* Fully Paid State */
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-center gap-2 my-2 animate-in fade-in zoom-in-95">
+                     <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                     <p className="text-emerald-500 font-bold text-xs uppercase tracking-wider">Fully Paid</p>
+                  </div>
                 )}
               </div>
 
               {/* Footer Actions */}
-              <div className="p-4 border-t border-white/10 flex gap-3 bg-black/20">
+              <div className="p-4 border-t border-white/10 flex gap-3 bg-black/20 backdrop-blur-sm">
                 <Button 
                   variant="outline" 
                   onClick={() => onOpenChange(false)} 
@@ -535,7 +579,7 @@ const SessionManagerModal = ({
                 <Button
                   onClick={handleCheckout}
                   disabled={loading || (balanceDue > 0 && !paymentMethod)}
-                  className="flex-[2] h-11 text-xs font-orbitron font-bold tracking-wide bg-white/10 border border-white/10 hover:bg-white/20 text-white shadow-lg disabled:opacity-50"
+                  className="flex-[2] h-11 text-xs font-orbitron font-bold tracking-wide bg-gradient-to-r from-primary to-blue-600 hover:scale-[1.02] transition-transform shadow-lg shadow-primary/20 text-white border-0 disabled:opacity-50 disabled:hover:scale-100"
                 >
                   {loading ? "Processing..." : paymentMethod === "CARRY_FORWARD" ? "Transfer to Tab" : "Complete & Close"}
                 </Button>
@@ -543,7 +587,7 @@ const SessionManagerModal = ({
             </div>
 
             {/* --- RIGHT PANEL: ITEMS MANAGER --- */}
-            <div className="w-full md:w-[300px] flex flex-col gap-4 animate-in fade-in slide-in-from-left-4 duration-300">
+            <div className="w-full md:w-[320px] flex flex-col gap-4 animate-in fade-in slide-in-from-left-4 duration-300">
                 {groupedItems.length > 0 ? (
                     <div className="bg-[#0f1115] border border-white/10 rounded-xl shadow-2xl flex flex-col overflow-hidden h-full max-h-[500px]">
                         <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
@@ -552,7 +596,7 @@ const SessionManagerModal = ({
                                 size="sm" 
                                 variant="ghost"
                                 onClick={() => setShowAddItem(true)}
-                                className="h-7 w-7 p-0 rounded-full bg-primary/10 text-primary hover:bg-primary/20"
+                                className="h-7 w-7 p-0 rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary transition-colors"
                             >
                                 <Plus className="h-4 w-4" />
                             </Button>

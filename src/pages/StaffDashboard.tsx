@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, Menu, BarChart3, Receipt, RotateCcw, Refrigerator, Settings, ShoppingCart } from "lucide-react";
+import { LogOut, User, Menu, BarChart3, Receipt, RotateCcw, Sparkles, Gamepad, LayoutGrid, Settings, FileText, ShoppingCart, UserCircle, ChevronRight } from "lucide-react";
 import DeviceCard from "@/components/DeviceCard";
 import StartSessionModal from "@/components/StartSessionModal";
 import SessionManagerModal from "@/components/SessionManagerModal";
@@ -20,7 +20,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 
-// ... (Interfaces remain same)
 interface Device {
   id: string;
   name: string;
@@ -61,7 +60,6 @@ const StaffDashboard = () => {
 
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
 
-  // ... (Effects and fetch logic remain same)
   useEffect(() => {
     fetchData();
     const channel = supabase
@@ -133,6 +131,7 @@ const StaffDashboard = () => {
   const ps5s = devices.filter((d) => d.type === "PS5");
   const carroms = devices.filter((d) => d.type === "CARROM");
 
+  // STRICT Logic for 1P, 2P, 3P, 4P
   const getPlayerCountBadge = (deviceId: string) => {
     const name = deviceSessions[deviceId]?.profileName || "";
     const lowerName = name.toLowerCase();
@@ -169,7 +168,7 @@ const StaffDashboard = () => {
              <img src="/logo.jpg" className="h-full w-full object-cover opacity-90" alt="Logo" />
           </div>
           <div>
-             <h1 className="text-base font-orbitron font-bold text-foreground">THE CUESTATION</h1>
+             <h1 className="text-base font-orbitron font-bold text-foreground">CUESTATION</h1>
              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Logged in as {user?.username || 'Staff'}</p>
           </div>
         </div>
@@ -195,43 +194,84 @@ const StaffDashboard = () => {
                 <Menu className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 glass border-white/10">
-              <DropdownMenuLabel>Menu</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-white/10" />
-              <DropdownMenuItem onClick={() => setIsDailyStatsOpen(true)}>
-                <BarChart3 className="mr-2 h-4 w-4" /> Daily Stats
+            <DropdownMenuContent align="end" className="w-64 p-2">
+              
+              {/* Profile Section */}
+              <div className="flex items-center gap-3 p-2 mb-2 rounded-lg bg-white/5 border border-white/5">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-blue-600/20 flex items-center justify-center border border-white/10">
+                   <UserCircle className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex flex-col flex-1 overflow-hidden">
+                   <span className="text-sm font-bold truncate text-foreground">{user?.username}</span>
+                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{user?.role?.toLowerCase() || 'Access Level'}</span>
+                </div>
+              </div>
+
+              <DropdownMenuLabel className="px-2 mt-2">Operations</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setIsDailyStatsOpen(true)} className="gap-3">
+                <div className="h-6 w-6 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                </div>
+                <span>Daily Stats</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsExpenseModalOpen(true)}>
-                <Receipt className="mr-2 h-4 w-4" /> Expenses
+              <DropdownMenuItem onClick={() => setIsExpenseModalOpen(true)} className="gap-3">
+                <div className="h-6 w-6 rounded bg-amber-500/10 flex items-center justify-center text-amber-500">
+                  <Receipt className="h-3.5 w-3.5" />
+                </div>
+                <span>Expenses</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsDirectSaleOpen(true)}>
-                <ShoppingCart className="mr-2 h-4 w-4" /> Counter Sale
+              <DropdownMenuItem onClick={() => setIsDirectSaleOpen(true)} className="gap-3">
+                <div className="h-6 w-6 rounded bg-blue-500/10 flex items-center justify-center text-blue-500">
+                  <ShoppingCart className="h-3.5 w-3.5" />
+                </div>
+                <span>Counter Sale</span>
               </DropdownMenuItem>
+
               {user?.role === 'ADMIN' && (
                 <>
-                  <DropdownMenuSeparator className="bg-white/10" />
-                  <DropdownMenuItem onClick={() => navigate("/admin")}>
-                    <Settings className="mr-2 h-4 w-4" /> Admin Panel
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="px-2">Administration</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => navigate("/admin")} className="gap-3 group">
+                    <div className="h-6 w-6 rounded bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                      <Settings className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="flex-1">Admin Panel</span>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
                   </DropdownMenuItem>
                 </>
               )}
-              <DropdownMenuSeparator className="bg-white/10" />
-              <DropdownMenuItem onClick={logout} className="text-destructive">
-                <LogOut className="mr-2 h-4 w-4" /> Logout
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} className="text-red-400 focus:text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 gap-3">
+                <LogOut className="h-4 w-4" />
+                Logout
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      <div className="relative z-10 flex-1 pt-4">
+      <div className="relative z-10 flex-1 pt-4"> {/* Increased Spacing from Header */}
         {layout === "default" ? (
-          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pt-6">
+          /* "Lil Bigger Width" - Increased max-w to 7xl */
+          <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pt-6">
             
+            {/* Billiards Section */}
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <LayoutGrid className="h-4 w-4 text-billiard" />
+              <h2 className="text-sm font-orbitron text-gradient-billiard tracking-wide">Billiards</h2>
+              <div className="h-px bg-gradient-to-r from-billiard/30 to-transparent flex-1" />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               {billiards.map((device) => renderCard(device))}
             </div>
 
+            {/* Consoles Section */}
+            <div className="flex items-center gap-2 mt-6 mb-2 px-1">
+              <Gamepad className="h-4 w-4 text-ps5" />
+              <h2 className="text-sm font-orbitron text-gradient-ps5 tracking-wide">Consoles</h2>
+              <div className="h-px bg-gradient-to-r from-ps5/30 to-transparent flex-1" />
+            </div>
             
             <div className="grid grid-cols-3 gap-4">
                {/* Left Column */}
@@ -309,11 +349,11 @@ const StaffDashboard = () => {
       
       <div className="fixed bottom-4 right-4 z-40">
           <Button 
-              className="h-14 px-10 shadow-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 text-white flex gap-2 items-center transition-all"
+              className="h-10 px-4 rounded-full shadow-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 text-white flex gap-2 items-center transition-all"
               onClick={() => setIsDirectSaleOpen(true)}
           >
-              <Refrigerator className="h-5 w-5" />
-              <span className="font-orbitron font-bold text-[10px] tracking-wide">Juice/Snack Counter</span>
+              <Sparkles className="h-3.5 w-3.5" />
+              <span className="font-orbitron font-bold text-[10px] tracking-wide">Quick Sale</span>
           </Button>
       </div>
     </div>

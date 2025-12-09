@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Gamepad2, Receipt, Infinity, Hourglass, Target, LayoutGrid, Clock, Check, ArrowLeft } from "lucide-react";
+import { Gamepad2, Receipt, Infinity, Hourglass, Target, LayoutGrid, Clock, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Device {
@@ -215,11 +215,11 @@ const StartSessionModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Hide default close button to avoid overlap */}
-      <DialogContent className="sm:max-w-md bg-[#0f1115] border border-white/10 p-0 gap-0 overflow-hidden shadow-2xl [&>button]:hidden">
+      {/* ADDED: max-h-[90vh] and flex-col to enable scrolling for inner content */}
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col bg-[#0f1115] border border-white/10 p-0 gap-0 shadow-2xl [&>button]:hidden">
         
-        {/* Header */}
-        <div className="p-6 pb-4 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent">
+        {/* Header - Fixed */}
+        <div className="p-6 pb-4 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent shrink-0">
           <DialogHeader className="flex flex-row items-center gap-3 space-y-0 text-left">
             <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shadow-inner">
               {getIcon()}
@@ -235,7 +235,8 @@ const StartSessionModal = ({
           </DialogHeader>
         </div>
 
-        <div className="p-6 space-y-6">
+        {/* Scrollable Content Body */}
+        <div className="p-6 space-y-6 flex-1 overflow-y-auto">
           {/* 1. Rate Selection */}
           <div className="space-y-3">
             <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Select Rate</Label>
@@ -356,8 +357,8 @@ const StartSessionModal = ({
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-4 bg-black/20 backdrop-blur-sm border-t border-white/5 flex gap-3">
+        {/* Footer Actions - Fixed */}
+        <div className="p-4 bg-black/20 backdrop-blur-sm border-t border-white/5 flex gap-3 shrink-0">
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)} 

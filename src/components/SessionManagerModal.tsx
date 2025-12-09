@@ -314,7 +314,6 @@ const SessionManagerModal = ({
   };
 
   const handleCheckout = async () => {
-    // FIX: Only require payment method if there is a positive balance to pay
     const finalAmountNum = parseFloat(finalAmount) || 0;
     const balanceDueCheck = Math.max(0, finalAmountNum - totalPaid);
 
@@ -360,7 +359,7 @@ const SessionManagerModal = ({
         .update({
           end_time: new Date().toISOString(),
           status: "COMPLETED",
-          payment_method: paymentMethod, // Can be null if fully paid
+          payment_method: paymentMethod, 
           amount_cash: totalCash,
           amount_upi: totalUpi,
           final_amount: finalAmountNum,
@@ -399,17 +398,18 @@ const SessionManagerModal = ({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-fit bg-transparent border-0 p-0 shadow-none sm:max-w-fit outline-none [&>button]:hidden">
           
+          {/* Constrain height and add internal scrolling logic */}
           <div className="flex flex-col md:flex-row gap-4 items-start max-h-[90vh]">
             
-            {/* --- LEFT PANEL: SESSION CONTROLS --- */}
+            {/* --- LEFT PANEL: MAIN SESSION CONTROL --- */}
             <div className="w-full md:w-[400px] bg-[#0f1115] border border-white/10 rounded-xl shadow-2xl flex flex-col overflow-hidden max-h-full">
-              <DialogHeader className="p-4 border-b border-white/5 bg-white/5">
+              <DialogHeader className="p-4 border-b border-white/5 bg-white/5 shrink-0">
                 <DialogTitle className="font-orbitron flex justify-between items-center text-lg">
                   <span>{device.name}</span>
                   <div className="w-[140px]">
                     <Select value={selectedProfileId} onValueChange={handleProfileSwitch}>
                       <SelectTrigger className="h-8 text-xs bg-black/40 border-white/10 text-muted-foreground hover:text-white transition-colors">
-                        <SelectValue placeholder="Rate" />
+                        <SelectValue placeholder="Select Rate" />
                       </SelectTrigger>
                       <SelectContent className="bg-[#0f1115] border-white/10">
                         {rateProfiles.map((p) => (
@@ -423,6 +423,7 @@ const SessionManagerModal = ({
                 </DialogTitle>
               </DialogHeader>
 
+              {/* Scrollable Content */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 
                 {/* Receipt Card */}
@@ -567,8 +568,8 @@ const SessionManagerModal = ({
                 )}
               </div>
 
-              {/* Footer Actions */}
-              <div className="p-4 border-t border-white/10 flex gap-3 bg-black/20 backdrop-blur-sm">
+              {/* Footer Actions - Fixed */}
+              <div className="p-4 border-t border-white/10 flex gap-3 bg-black/20 backdrop-blur-sm shrink-0">
                 <Button 
                   variant="outline" 
                   onClick={() => onOpenChange(false)} 

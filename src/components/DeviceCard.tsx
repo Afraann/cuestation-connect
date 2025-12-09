@@ -84,21 +84,28 @@ const DeviceCard = ({ device, startTime, plannedDuration, playerCount, onClick, 
 
   // Dynamic Styles based on State
   const getCardStyles = () => {
+    // 1. Free State (Neutral)
     if (!isOccupied) return isPS5 ? "hover:border-blue-500/50" : "hover:border-emerald-500/50";
+    
+    // 2. Critical States (Overtime / Low Time)
     if (isOvertime) return "bg-red-950/10 border-red-500/50 shadow-[0_0_20px_-10px_rgba(239,68,68,0.3)]";
     if (isLowTime) return "bg-amber-950/10 border-amber-500/60 shadow-[0_0_20px_-10px_rgba(245,158,11,0.3)] animate-pulse-slow";
-    return "bg-card/90 border-white/10";
+    
+    // 3. Active Session Highlight (Blue for Console, Green for Table)
+    return isPS5 
+      ? "bg-blue-950/10 border-blue-500/30 shadow-[0_0_15px_-5px_rgba(59,130,246,0.2)]" 
+      : "bg-emerald-950/10 border-emerald-500/30 shadow-[0_0_15px_-5px_rgba(16,185,129,0.2)]";
   };
 
-  const progressBarColor = isOvertime ? "bg-red-500" : isLowTime ? "bg-amber-500" : "bg-primary";
+  const progressBarColor = isOvertime ? "bg-red-500" : isLowTime ? "bg-amber-500" : "bg-emerald-500";
 
   return (
-    <div className="relative group w-full h-32"> {/* Increased Height to h-32 */}
+    <div className="relative group w-full h-32">
       <Card
         onClick={onClick}
         className={cn(
           "relative h-full w-full cursor-pointer overflow-hidden border transition-all duration-300",
-          "flex flex-col justify-between p-4 rounded-xl shadow-md bg-[#0f1115]", // Increased Padding
+          "flex flex-col justify-between p-4 rounded-xl shadow-md bg-[#0f1115]",
           !isOccupied && "bg-card hover:bg-accent/5",
           getCardStyles(),
           className
@@ -163,17 +170,18 @@ const DeviceCard = ({ device, startTime, plannedDuration, playerCount, onClick, 
                   isLowTime ? "text-amber-500/80" : "text-muted-foreground"
                 )}>
                   {isLowTime ? <AlertTriangle className="h-3 w-3" /> : (plannedDuration ? <Hourglass className="h-3 w-3" /> : <Clock className="h-3 w-3" />)}
-                  {isOvertime ? "Overdue" : isLowTime ? "Almost Time" : "Time"}
+                  {isOvertime ? "Overdue" : isLowTime ? "Almost Time" : "Active Time"}
                 </span>
+                {/* Changed default color to emerald-400 for Active State */}
                 <span className={cn(
                   "text-2xl font-black font-orbitron leading-none tracking-tight",
-                  isOvertime ? "text-red-500" : isLowTime ? "text-amber-400" : "text-foreground"
+                  isOvertime ? "text-red-500" : isLowTime ? "text-amber-400" : "text-emerald-400"
                 )}>
                   {displayTime}
                 </span>
               </div>
               
-              {/* Player Count Badge (Only if occupied) */}
+              {/* Player Count Badge */}
               {playerCount && (
                 <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-2 py-1 rounded text-[10px] text-primary font-bold font-orbitron mb-1">
                   <Users className="h-3 w-3" />
@@ -183,7 +191,7 @@ const DeviceCard = ({ device, startTime, plannedDuration, playerCount, onClick, 
               
               {/* Visual Icon if no player count */}
               {!playerCount && (
-                <Zap className={cn("h-6 w-6 opacity-20", isOvertime ? "text-red-500" : isLowTime ? "text-amber-500" : "text-primary")} />
+                <Zap className={cn("h-6 w-6 opacity-20", isOvertime ? "text-red-500" : isLowTime ? "text-amber-500" : "text-emerald-500")} />
               )}
             </>
           ) : (
